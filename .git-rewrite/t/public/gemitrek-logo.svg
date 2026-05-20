@@ -1,0 +1,19 @@
+<svg width="240" height="64" viewBox="0 0 240 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">GemiTrek Logo</title>
+  <desc id="desc">A gradient gem marker icon beside the GemiTrek wordmark.</desc>
+  <defs>
+    <linearGradient id="gemitrek-mark" x1="8" y1="8" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="gemitrek-glow" x1="68" y1="18" x2="232" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.53" stop-color="#FFFFFF"/>
+      <stop offset="0.54" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+  </defs>
+  <path d="M28 7C18.0589 7 10 15.0589 10 25C10 39.25 28 55 28 55C28 55 46 39.25 46 25C46 15.0589 37.9411 7 28 7Z" fill="url(#gemitrek-mark)"/>
+  <path d="M28 14L31.1327 21.8673L39 25L31.1327 28.1327L28 36L24.8673 28.1327L17 25L24.8673 21.8673L28 14Z" fill="white"/>
+  <text x="62" y="42" fill="url(#gemitrek-glow)" font-family="Inter, Montserrat, Arial, sans-serif" font-size="30" font-weight="800">GemiTrek</text>
+</svg>

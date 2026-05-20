@@ -1,0 +1,154 @@
+"use client";
+import { AppSidebar } from "@/components/app-sidebar";
+import PlanCard from "@/components/dashboard/PlanCard";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { LoadingPlans } from "@/components/LoadingPlans";
+import {useEffect, useState} from "react";
+import {fetchPublicTrips} from "@/lib/firebase/firestore-db";
+import {PlanDoc} from "@/lib/types/firestore";
+
+export default function CommunityPlans({
+  companionId,
+}: {
+  companionId?: string;
+}) {
+  const [results, setResults] = useState<PlanDoc[] | undefined>();
+
+  useEffect(() => {
+    fetchPublicTrips(24)
+      .then((plans) => {
+        const filtered = companionId
+          ? plans.filter((plan) => plan.companion === companionId)
+          : plans;
+        setResults(filtered);
+      })
+      .catch(() => setResults([]));
+  }, [companionId]);
+
+  const noPlansToShow =
+    results && results.length === 0;
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="flex flex-col">
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <h2>Community Plans</h2>
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <p className="text-sm text-gray-500">
+              Plans shared by other fellow travellers
+            </p>
+          </div>
+        </header>
+        <div className="flex flex-col gap-2 pt-0">
+          {results && results.length ? (
+            <div
+              className="grid grid-cols-1 
+                      md:grid-cols-2 lg:grid-cols-3
+                      2xl:grid-cols-4 4xl:grid-cols-6
+                      gap-5 px-10 py-2 justify-center"
+            >
+              {results?.map((plan) => (
+                <PlanCard key={plan._id} plan={plan} isPublic />
+              ))}
+            </div>
+          ) : null}
+          {noPlansToShow && <NoPlansFound />}
+          {results === undefined && <LoadingPlans />}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+export function EmptyPlansIllustration({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 839 559"
+      className={cn("h-48 w-48 text-primary/20", className)}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* SVG from undraw.co (simplified version of https://undraw.co/illustrations -> search "no data") */}
+      <path
+        d="M634.5 206H563V274.5H634.5V206Z"
+        fill="currentColor"
+        className="opacity-50"
+      />
+      <path
+        d="M653.5 343H582V411.5H653.5V343Z"
+        fill="currentColor"
+        className="opacity-30"
+      />
+      <path
+        d="M388.5 133H317V201.5H388.5V133Z"
+        fill="currentColor"
+        className="opacity-30"
+      />
+      <path
+        d="M275.5 343H204V411.5H275.5V343Z"
+        fill="currentColor"
+        className="opacity-50"
+      />
+      <path
+        d="M475.096 282.603C433.404 282.603 399.5 316.507 399.5 358.199C399.5 399.891 433.404 433.795 475.096 433.795C516.788 433.795 550.692 399.891 550.692 358.199C550.692 316.507 516.788 282.603 475.096 282.603Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="opacity-50"
+      />
+      <path
+        d="M522.5 358.199L496 344.199V372.199L522.5 358.199Z"
+        fill="currentColor"
+        className="opacity-50"
+      />
+      <path
+        d="M209.5 230.5V297C209.5 314.5 223.5 328.5 241 328.5H307"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="opacity-50"
+      />
+      <path
+        d="M633 297V230.5C633 213 619 199 601.5 199H535.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="opacity-50"
+      />
+    </svg>
+  );
+}
+
+export function NoPlansFound() {
+  return (
+    <Card className="mx-auto w-full h-[600px] flex-grow p-8 text-center animate-fade-in">
+      <div className="mb-6 flex justify-center">
+        <EmptyPlansIllustration className="animate-pulse" />
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          🔍 Let's Try Again Together!
+        </h2>
+
+        <p className="text-muted-foreground">
+          Explore new public plans by updating your filters.
+        </p>
+      </div>
+
+      <div className="mt-6 text-sm text-muted-foreground/60">
+        <p>
+          Psst... even astronauts need to adjust their trajectory sometimes 🚀
+        </p>
+      </div>
+    </Card>
+  );
+}
