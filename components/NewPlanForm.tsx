@@ -101,9 +101,12 @@ const NewPlanForm = ({
 
     setIsLoadingEmptyPlan(true);
     try {
+      console.log("[1] Starting generation flow for empty plan...");
       const planId = await generateEmptyPlanAction(values, userId);
+      console.log("[2] Empty plan API responded successfully!");
       closeModal(false);
       if (planId) {
+        console.log("[3] UI state updated (redirecting to plan)...");
         router.push(`/plans/${planId}/plan?isNewPlan=true`);
       } else {
         toast({
@@ -112,8 +115,8 @@ const NewPlanForm = ({
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Error in onSubmitEmptyPlan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -146,9 +149,12 @@ const NewPlanForm = ({
 
     setIsLoadingAIPlan(true);
     try {
+      console.log("[1] Starting generation flow for AI plan...");
       const planId = await generatePlanAction(values, userId);
+      console.log("[2] AI plan API responded successfully!");
       closeModal(false);
       if (planId) {
+        console.log("[3] UI state updated (redirecting to plan)...");
         router.push(`/plans/${planId}/plan?isNewPlan=true`);
       } else {
         toast({
@@ -157,8 +163,8 @@ const NewPlanForm = ({
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Error in onSubmitAIPlan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",

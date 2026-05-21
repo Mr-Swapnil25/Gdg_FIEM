@@ -17,18 +17,30 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
     setPlan(undefined);
     setError(undefined);
 
-    fetchTripById(planId, user?.uid, isPublic)
-      .then((trip) => {
+    async function loadPlan() {
+      console.log("[1] Starting fetching flow for trip by ID...");
+      try {
+        const trip = await fetchTripById(planId, user?.uid, isPublic);
         if (cancelled) return;
+        console.log("[2] Trip by ID API responded successfully!");
         setPlan(trip);
-        if (!trip) setError("Plan not found or access denied.");
-      })
-      .catch((err) => {
+        if (!trip) {
+          setError("Plan not found or access denied.");
+        }
+        console.log("[3] UI state updated with trip by ID.");
+      } catch (err: any) {
         if (cancelled) return;
-        console.error(err);
+        console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
-      });
+      } finally {
+        if (!cancelled) {
+           console.log("[4] Trip by ID load flow finished.");
+        }
+      }
+    }
+
+    loadPlan();
 
     return () => {
       cancelled = true;

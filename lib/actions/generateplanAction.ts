@@ -18,7 +18,14 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await generateTripWithGemini(prompt, {
+    console.log("[1] Starting generation flow...");
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request Timed Out"));
+      }, 30000);
+    });
+
+    const generatedPromise = generateTripWithGemini(prompt, {
       placeName,
       activityPreferences,
       companion,
@@ -28,6 +35,9 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       distanceUnit: "km",
       region: "IN",
     });
+
+    const generated = await Promise.race([generatedPromise, timeoutPromise]);
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     
@@ -87,6 +97,8 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       generated.topPlacesToVisit = mappedPlacesData;
     }
 
+    console.log("[3] UI state updated.");
+
     const planId = await saveTripToFirestore(userId, {
       nameoftheplace: placeName,
       userPrompt: prompt,
@@ -121,8 +133,10 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
     });
 
     return planId;
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error.message, error.stack);
     return null; /* Important: Return null or throw custom error for the client to handle */
+  } finally {
+    console.log("[4] generatePlanAction finished.");
   }
 }

@@ -52,9 +52,9 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
     libraries: libraries as Libraries,
   });
 
-  if (loadError || googleMapsApi?.loadError) return <p>Encountered error while loading google maps</p>;
+  if (loadError || googleMapsApi?.loadError) return <div>Error loading maps: {loadError?.message || googleMapsApi?.loadError?.message}</div>;
 
-  if ((!scriptLoaded || !googleMapsApi?.isLoaded) || isLoading) return <SkeletonForTopPlacesToVisit isMaps />;
+  if (!scriptLoaded || !googleMapsApi?.isLoaded || isLoading) return <div>Loading Maps...</div>;
 
   // Return the children prop wrapped by this MapProvider component
   return children;
