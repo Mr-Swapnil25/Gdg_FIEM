@@ -13,6 +13,7 @@ type GenerateOptions = {
 };
 
 const DEFAULT_MODEL = "gemini-1.5-flash";
+const GEMINI_TIMEOUT_MS = 30000; // 30-second timeout failsafe
 
 async function getClient() {
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
@@ -28,10 +29,14 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
+  console.log("[1] Starting generation flow...");
+  
   try {
     const client = await getClient();
     const model = options?.model || DEFAULT_MODEL;
     const fullPrompt = buildPrompt(prompt, preferences);
+
+    console.log("[1.5] Gemini client initialized, sending request to model:", model);
 
     const generativeModel = client.getGenerativeModel({
       model,
@@ -41,12 +46,24 @@ export async function generateTripWithGemini(
       },
     });
 
-    const result = await generativeModel.generateContent(fullPrompt);
+    // Timeout failsafe: wrap the API call in Promise.race
+    const result = await Promise.race([
+      generativeModel.generateContent(fullPrompt),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Request Timed Out after 30 seconds")), GEMINI_TIMEOUT_MS)
+      )
+    ]);
+
+    console.log("[2] Gemini API responded successfully!");
+    
     const parsed = safeJsonParse(result.response.text());
     assertTripItinerary(parsed);
+    
+    console.log("[3] UI state updated.");
+    
     return parsed;
   } catch (error) {
-    console.error("GEMINI PROD ERROR:", error);
+    console.error("CRITICAL FETCH ERROR:", error instanceof Error ? error.message : error, error instanceof Error ? error.stack : "");
     throw error;
   }
 }

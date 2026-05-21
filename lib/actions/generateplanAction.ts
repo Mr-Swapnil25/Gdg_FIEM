@@ -10,6 +10,8 @@ import {generateTripWithGemini} from "@/lib/gemini-client";
 export async function generatePlanAction(formData: formSchemaType, userId: string): Promise<string | null> {
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
+  
+  console.log("[ACTION] Starting generatePlanAction for place:", placeName);
 
   try {
     const prompt = [
@@ -18,6 +20,7 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
+    console.log("[ACTION] Calling Gemini API with prompt...");
     const generated = await generateTripWithGemini(prompt, {
       placeName,
       activityPreferences,
@@ -28,12 +31,15 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       distanceUnit: "km",
       region: "IN",
     });
+    
+    console.log("[ACTION] Gemini API call completed successfully!");
 
     let mainImageUrl: string | null = null;
     
     // Google Maps Connection - Fetch exact coordinates for topPlacesToVisit and a main image for the plan
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (googleMapsApiKey) {
+      console.log("[ACTION] Google Maps API key found, fetching place data...");
       const mapsClient = new Client({});
       
       try {
@@ -50,12 +56,14 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
           if (mainPlace.photos && mainPlace.photos.length > 0) {
             const photoReference = mainPlace.photos[0].photo_reference;
             mainImageUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${googleMapsApiKey}`;
+            console.log("[ACTION] Main image URL fetched successfully");
           }
         }
       } catch (e) {
         console.warn(`Failed to fetch image for place ${placeName}`, e);
       }
 
+      console.log("[ACTION] Fetching coordinates for top places to visit...");
       const mappedPlacesData = await Promise.all(
         generated.topPlacesToVisit.map(async (place) => {
           try {
@@ -85,8 +93,10 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       );
       
       generated.topPlacesToVisit = mappedPlacesData;
+      console.log("[ACTION] Top places coordinates updated");
     }
 
+    console.log("[ACTION] Saving trip to Firestore...");
     const planId = await saveTripToFirestore(userId, {
       nameoftheplace: placeName,
       userPrompt: prompt,
@@ -120,9 +130,12 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       },
     });
 
+    console.log("[ACTION] Plan saved successfully with ID:", planId);
     return planId;
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR in generatePlanAction:", error instanceof Error ? error.message : error, error instanceof Error ? error.stack : "");
     return null; /* Important: Return null or throw custom error for the client to handle */
+  } finally {
+    console.log("[ACTION] generatePlanAction completed (finally block executed)");
   }
 }
