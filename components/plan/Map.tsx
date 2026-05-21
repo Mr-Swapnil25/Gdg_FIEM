@@ -1,7 +1,7 @@
 "use client";
 import {Doc} from "@/lib/types/firestore";
 import {colors, MAPS_DARK_MODE_STYLES} from "@/lib/constants";
-import {GoogleMap, useJsApiLoader, OverlayView, Libraries} from "@react-google-maps/api";
+import {GoogleMap, OverlayView} from "@react-google-maps/api";
 import {MapPin} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useEffect, useState} from "react";

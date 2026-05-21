@@ -1,26 +1,52 @@
 import {getApp, getApps, initializeApp} from "firebase/app";
 import {browserLocalPersistence, getAuth, setPersistence} from "firebase/auth";
+import type {Auth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
+import {getStorage} from "firebase/storage";
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+import {ENV_CONFIG, getMissingFirebaseEnvKeys, hasCompleteFirebaseConfig} from "@/lib/env-config";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCriToueLXKW-tDdUp0L0PKsjZo2ACjHjc",
-  authDomain: "promptspirit.firebaseapp.com",
-  projectId: "promptspirit",
-  storageBucket: "promptspirit.firebasestorage.app",
-  messagingSenderId: "577964155956",
-  appId: "1:577964155956:web:8aafa45fb7279974581661",
-  measurementId: "G-2SMV89JZD8",
+  apiKey: ENV_CONFIG.FIREBASE_API_KEY ?? "",
+  authDomain: ENV_CONFIG.FIREBASE_AUTH_DOMAIN ?? "",
+  projectId: ENV_CONFIG.FIREBASE_PROJECT_ID ?? "",
+  storageBucket: ENV_CONFIG.FIREBASE_STORAGE_BUCKET ?? "",
+  messagingSenderId: ENV_CONFIG.FIREBASE_MESSAGING_SENDER_ID ?? "",
+  appId: ENV_CONFIG.FIREBASE_APP_ID ?? "",
 };
 
-export const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+export const missingFirebaseEnvKeys = getMissingFirebaseEnvKeys();
+export let firebaseInitError = hasCompleteFirebaseConfig()
+  ? null
+  : `Missing Firebase environment variables: ${missingFirebaseEnvKeys.join(", ")}`;
 
-export const auth = getAuth(firebaseApp);
-// Set the auth persistence to local storage
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error("Firebase persistence error:", error);
-});
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const db = getFirestore(firebaseApp);
+function initializeAuthSafely(): Auth | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-export default firebaseApp;
+  try {
+    return getAuth(app);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown Firebase Auth initialization error.";
+    firebaseInitError = firebaseInitError ?? `Firebase Auth initialization failed: ${errorMessage}`;
+    console.error("Firebase auth initialization error:", error);
+    return null;
+  }
+}
+
+export const firebaseApp = app;
+export const auth = initializeAuthSafely();
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+if (typeof window !== "undefined" && auth && !firebaseInitError) {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("Firebase persistence error:", error);
+  });
+}
+
+export default app;

@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Loader2, MessageSquarePlus, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { generatePlanAction } from "@/lib/actions/generateplanAction";
+import { generatePlanAction, type GeneratePlanActionResult } from "@/lib/actions/generateplanAction";
 import PlacesAutoComplete from "@/components/PlacesAutoComplete";
 
 import { generateEmptyPlanAction } from "@/lib/actions/generateEmptyPlanAction";
@@ -55,6 +56,11 @@ const NewPlanForm = ({
   const userId = user?.uid ?? "";
   const googleMapsApi = useGoogleMapsApi();
   const isGoogleMapsLoaded = googleMapsApi?.isLoaded ?? false;
+  const isGoogleMapsUnavailable = Boolean(
+    googleMapsApi?.isKeyMissing || googleMapsApi?.loadError || googleMapsApi?.isTimedOut
+  );
+  const shouldUsePlacesAutocomplete = isGoogleMapsLoaded && !isGoogleMapsUnavailable;
+  const shouldShowMapsLoader = !isGoogleMapsUnavailable && !isGoogleMapsLoaded;
 
   const [isLoadingEmptyPlan, setIsLoadingEmptyPlan] = useState(false);
   const [isLoadingAIPlan, setIsLoadingAIPlan] = useState(false);
@@ -63,6 +69,7 @@ const NewPlanForm = ({
 
   const { toast } = useToast();
   const router = useRouter();
+  const hasShownMapsErrorToastRef = useRef(false);
 
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
@@ -77,25 +84,39 @@ const NewPlanForm = ({
     },
   });
 
-  if (!userId) return null;
+  useEffect(() => {
+    if (hasShownMapsErrorToastRef.current || !isGoogleMapsUnavailable) return;
+
+    const description = googleMapsApi?.isKeyMissing
+      ? "Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY. Using manual destination input."
+      : googleMapsApi?.isTimedOut
+      ? "Google Places did not load within 3 seconds. Using manual destination input."
+      : `Google Places failed to load${
+          googleMapsApi?.loadError ? `: ${googleMapsApi.loadError.message}` : "."
+        } Using manual destination input.`;
+
+    toast({
+      title: "Places autocomplete unavailable",
+      description,
+      variant: "destructive",
+    });
+
+    hasShownMapsErrorToastRef.current = true;
+  }, [googleMapsApi, isGoogleMapsUnavailable, toast]);
+
+  function validatePlaceSelection() {
+    if (!shouldUsePlacesAutocomplete) return true;
+    if (selectedFromList) return true;
+
+    form.setError("placeName", {
+      message: "Place should be selected from the list",
+      type: "custom",
+    });
+    return false;
+  }
 
   async function onSubmitEmptyPlan(values: z.infer<typeof formSchema>) {
-    if (typeof window === "undefined" || !window.google || !window.google.maps) {
-      console.error("Google Maps API is not loaded yet. Please wait.");
-      toast({
-        title: "Maps loading",
-        description: "Google Maps API is not loaded yet. Please wait.",
-        variant: "destructive",
-      });
-      setIsLoadingEmptyPlan(false);
-      return;
-    }
-
-    if (!selectedFromList) {
-      form.setError("placeName", {
-        message: "Place should be selected from the list",
-        type: "custom",
-      });
+    if (!validatePlaceSelection()) {
       return;
     }
 
@@ -124,36 +145,40 @@ const NewPlanForm = ({
     }
   }
 
-  async function onSubmitAIPlan(values: z.infer<typeof formSchema>) {
-    if (typeof window === "undefined" || !window.google || !window.google.maps) {
-      console.error("Google Maps API is not loaded yet. Please wait.");
-      toast({
-        title: "Maps loading",
-        description: "Google Maps API is not loaded yet. Please wait.",
-        variant: "destructive",
-      });
-      setIsLoadingAIPlan(false);
-      return;
+  function resolvePlanError(result: Extract<GeneratePlanActionResult, { ok: false }>) {
+    switch (result.errorCode) {
+      case "MISSING_GEMINI_API_KEY":
+        return "Missing NEXT_PUBLIC_GEMINI_API_KEY.";
+      case "GEMINI_TIMEOUT":
+        return "Gemini request timed out after 30 seconds.";
+      case "GEMINI_INVALID_JSON":
+        return "Gemini returned invalid JSON.";
+      case "GEMINI_INVALID_RESPONSE":
+        return "Gemini returned malformed itinerary data.";
+      case "GEMINI_REQUEST_FAILED":
+        return "Gemini request failed.";
+      case "PLAN_SAVE_FAILED":
+        return "Generated plan could not be saved to Firebase.";
+      default:
+        return result.errorMessage;
     }
+  }
 
-    if (!selectedFromList) {
-      form.setError("placeName", {
-        message: "Place should be selected from the list",
-        type: "custom",
-      });
+  async function onSubmitAIPlan(values: z.infer<typeof formSchema>) {
+    if (!validatePlaceSelection()) {
       return;
     }
 
     setIsLoadingAIPlan(true);
     try {
-      const planId = await generatePlanAction(values, userId);
-      closeModal(false);
-      if (planId) {
-        router.push(`/plans/${planId}/plan?isNewPlan=true`);
+      const result = await generatePlanAction(values, userId);
+      if (result.ok) {
+        closeModal(false);
+        router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
       } else {
         toast({
-          title: "Error",
-          description: "Failed to generate AI travel plan. Please try again.",
+          title: "Failed to generate AI travel plan",
+          description: resolvePlanError(result),
           variant: "destructive",
         });
       }
@@ -169,6 +194,8 @@ const NewPlanForm = ({
     }
   }
 
+  if (!userId) return null;
+
   return (
     <Form {...form}>
       <form className="space-y-4">
@@ -179,19 +206,34 @@ const NewPlanForm = ({
             <FormItem>
               <FormLabel>Search for your destination city</FormLabel>
               <FormControl>
-                {isGoogleMapsLoaded ? (
+                {shouldUsePlacesAutocomplete ? (
                   <PlacesAutoComplete
                     field={field}
                     form={form}
                     selectedFromList={selectedFromList}
                     setSelectedFromList={setSelectedFromList}
                   />
-                ) : (
+                ) : shouldShowMapsLoader ? (
                   <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                     Loading Google Maps search...
                   </div>
+                ) : (
+                  <Input
+                    type="text"
+                    placeholder="Enter destination city manually..."
+                    value={field.value}
+                    onChange={(event) => {
+                      setSelectedFromList(false);
+                      field.onChange(event.target.value);
+                    }}
+                  />
                 )}
               </FormControl>
+              {!shouldUsePlacesAutocomplete && (
+                <p className="text-xs text-muted-foreground">
+                  Places autocomplete is unavailable. Manual destination input is active.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}

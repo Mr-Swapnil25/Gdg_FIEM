@@ -5,12 +5,53 @@ import {Client} from "@googlemaps/google-maps-services-js";
 
 import {formSchemaType} from "@/components/NewPlanForm";
 import {saveTripToFirestore} from "@/lib/firebase/firestore-db";
-import {generateTripWithGemini} from "@/lib/gemini-client";
+import {
+  generateTripWithGemini,
+  GeminiGenerationError,
+} from "@/lib/gemini-client";
+import type {GeminiGenerationErrorCode} from "@/lib/gemini-client";
 
-export async function generatePlanAction(formData: formSchemaType, userId: string): Promise<string | null> {
+type GeneratePlanActionErrorCode =
+  | GeminiGenerationErrorCode
+  | "PLAN_SAVE_FAILED"
+  | "PLAN_GENERATION_FAILED";
+
+export type GeneratePlanActionResult =
+  | {ok: true; planId: string}
+  | {ok: false; errorCode: GeneratePlanActionErrorCode; errorMessage: string};
+
+function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
+  if (error instanceof GeminiGenerationError) {
+    return {
+      ok: false,
+      errorCode: error.code,
+      errorMessage: error.message,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      ok: false,
+      errorCode: "PLAN_GENERATION_FAILED",
+      errorMessage: error.message,
+    };
+  }
+
+  return {
+    ok: false,
+    errorCode: "PLAN_GENERATION_FAILED",
+    errorMessage: "Failed to generate AI travel plan. Please try again.",
+  };
+}
+
+export async function generatePlanAction(
+  formData: formSchemaType,
+  userId: string
+): Promise<GeneratePlanActionResult> {
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
+  console.log("[generatePlanAction] [1] Starting plan generation", { placeName: formData.placeName });
   try {
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
@@ -18,6 +59,7 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
+    console.log("[generatePlanAction] [2] Sending prompt to Gemini");
     const generated = await generateTripWithGemini(prompt, {
       placeName,
       activityPreferences,
@@ -56,6 +98,7 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
         console.warn(`Failed to fetch image for place ${placeName}`, e);
       }
 
+      console.log("[generatePlanAction] [3] Resolving topPlacesToVisit geocodes", { count: generated.topPlacesToVisit.length });
       const mappedPlacesData = await Promise.all(
         generated.topPlacesToVisit.map(async (place) => {
           try {
@@ -87,42 +130,55 @@ export async function generatePlanAction(formData: formSchemaType, userId: strin
       generated.topPlacesToVisit = mappedPlacesData;
     }
 
-    const planId = await saveTripToFirestore(userId, {
-      nameoftheplace: placeName,
-      userPrompt: prompt,
-      noOfDays: noOfDays.toString(),
-      imageUrl: mainImageUrl,
-      activityPreferences,
-      fromDate: datesOfTravel.from.getTime(),
-      toDate: datesOfTravel.to.getTime(),
-      companion,
-      isGeneratedUsingAI: true,
-      preferredCurrency: "INR",
-      budgetCurrency: "INR",
-      distanceUnit: "km",
-      regionalContext: "IN",
-      abouttheplace: generated.aboutThePlace,
-      besttimetovisit: generated.bestTimeToVisit,
-      adventuresactivitiestodo: generated.adventuresActivitiesToDo,
-      localcuisinerecommendations: generated.localCuisineRecommendations,
-      packingchecklist: generated.packingChecklist,
-      itinerary: generated.itinerary,
-      topplacestovisit: generated.topPlacesToVisit,
-      contentGenerationState: {
-        imagination: true,
-        abouttheplace: true,
-        adventuresactivitiestodo: true,
-        topplacestovisit: true,
-        itinerary: true,
-        localcuisinerecommendations: true,
-        packingchecklist: true,
-        besttimetovisit: true,
-      },
-    });
+    console.log("[generatePlanAction] [4] Saving generated plan to Firestore");
+    let planId: string;
+    try {
+      planId = await saveTripToFirestore(userId, {
+        nameoftheplace: placeName,
+        userPrompt: prompt,
+        noOfDays: noOfDays.toString(),
+        imageUrl: mainImageUrl,
+        activityPreferences,
+        fromDate: datesOfTravel.from.getTime(),
+        toDate: datesOfTravel.to.getTime(),
+        companion,
+        isGeneratedUsingAI: true,
+        preferredCurrency: "INR",
+        budgetCurrency: "INR",
+        distanceUnit: "km",
+        regionalContext: "IN",
+        abouttheplace: generated.aboutThePlace,
+        besttimetovisit: generated.bestTimeToVisit,
+        adventuresactivitiestodo: generated.adventuresActivitiesToDo,
+        localcuisinerecommendations: generated.localCuisineRecommendations,
+        packingchecklist: generated.packingChecklist,
+        itinerary: generated.itinerary,
+        topplacestovisit: generated.topPlacesToVisit,
+        contentGenerationState: {
+          imagination: true,
+          abouttheplace: true,
+          adventuresactivitiestodo: true,
+          topplacestovisit: true,
+          itinerary: true,
+          localcuisinerecommendations: true,
+          packingchecklist: true,
+          besttimetovisit: true,
+        },
+      });
+    } catch (saveError) {
+      console.error("Failed to save generated plan:", saveError);
+      return {
+        ok: false,
+        errorCode: "PLAN_SAVE_FAILED",
+        errorMessage: "Failed to save the generated travel plan.",
+      };
+    }
 
-    return planId;
-  } catch (error) {
-    console.error("Error generating plan:", error);
-    return null; /* Important: Return null or throw custom error for the client to handle */
+    return {ok: true, planId};
+  } catch (error: any) {
+    console.error("Error generating plan (CRITICAL):", error);
+    return toErrorResult(error);
+  } finally {
+    console.log("[generatePlanAction] [FINALLY] generatePlanAction completed for", { placeName: formData.placeName });
   }
 }

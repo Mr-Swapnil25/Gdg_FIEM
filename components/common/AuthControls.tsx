@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {useAuthContext} from "@/contexts/AuthContext";
 import {Loading} from "@/components/shared/Loading";
+import {useToast} from "@/components/ui/use-toast";
 
 export default function AuthControls() {
-  const {user, loading, loginWithGoogle, logout} = useAuthContext();
+  const {user, loading, loginWithGoogle, logout, error} = useAuthContext();
+  const {toast} = useToast();
 
   if (loading) {
     return <Loading className="h-5 w-5" />;
@@ -26,10 +28,23 @@ export default function AuthControls() {
       <Button
         size="default"
         variant="ghost"
-        onClick={loginWithGoogle}
+        disabled={Boolean(error)}
+        onClick={async () => {
+          try {
+            await loginWithGoogle();
+          } catch (signInError) {
+            console.error("Google sign-in failed:", signInError);
+            toast({
+              title: "Authentication error",
+              description: error ?? "Unable to sign in. Check Firebase configuration and try again.",
+              variant: "destructive",
+            });
+          }
+        }}
         className="h-9 rounded-md border border-current/20 px-4 text-sm font-medium hover:bg-white/10"
+        title={error ?? "Sign in with Google"}
       >
-        Sign in
+        {error ? "Firebase Config Error" : "Sign in"}
       </Button>
     );
   }

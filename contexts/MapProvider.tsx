@@ -1,61 +1,77 @@
-//Since the map will be laoded and displayed on client side
 "use client";
 
-import {SkeletonForTopPlacesToVisit} from "@/components/sections/TopPlacesToVisit";
-import {ENV_CONFIG} from "@/lib/env-config";
-// Import necessary modules and functions from external libraries and our own project
+import {ReactNode, createContext, useContext, useEffect, useMemo, useState} from "react";
 import {Libraries, useJsApiLoader} from "@react-google-maps/api";
-import {ReactNode, createContext, useContext} from "react";
 
-// Define a list of libraries to load from the Google Maps API
-const libraries = ["places", "drawing", "geometry"];
+import {SkeletonForTopPlacesToVisit} from "@/components/sections/TopPlacesToVisit";
+import {ENV_CONFIG, isGoogleMapsApiKeyMissing} from "@/lib/env-config";
+
+const GOOGLE_MAPS_LIBRARIES: Libraries = ["places"];
+const MAPS_LOAD_TIMEOUT_MS = 3000;
 
 type GoogleMapsApiState = {
   isLoaded: boolean;
   loadError: Error | undefined;
+  isKeyMissing: boolean;
+  isTimedOut: boolean;
 };
 
 const GoogleMapsApiContext = createContext<GoogleMapsApiState | null>(null);
 
 export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
-  const googleMapsApiKey = ENV_CONFIG.GOOGLE_MAPS_API_KEY;
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const isKeyMissing = isGoogleMapsApiKeyMissing();
 
   const {isLoaded, loadError} = useJsApiLoader({
-    googleMapsApiKey,
-    libraries: libraries as Libraries,
+    googleMapsApiKey: ENV_CONFIG.GOOGLE_MAPS_API_KEY ?? "",
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
-  return (
-    <GoogleMapsApiContext.Provider
-      value={{
-        isLoaded,
-        loadError,
-      }}
-    >
-      {children}
-    </GoogleMapsApiContext.Provider>
+  useEffect(() => {
+    if (isKeyMissing || loadError || isLoaded) {
+      setIsTimedOut(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => setIsTimedOut(true), MAPS_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [isKeyMissing, isLoaded, loadError]);
+
+  const value = useMemo(
+    () => ({
+      isLoaded,
+      loadError,
+      isKeyMissing,
+      isTimedOut,
+    }),
+    [isKeyMissing, isLoaded, isTimedOut, loadError]
   );
+
+  return <GoogleMapsApiContext.Provider value={value}>{children}</GoogleMapsApiContext.Provider>;
 }
 
 export function useGoogleMapsApi() {
   return useContext(GoogleMapsApiContext);
 }
 
-// Define a function component called MapProvider that takes a children prop
 export function MapProvider({children, isLoading}: {children: ReactNode; isLoading: boolean}) {
-  const googleMapsApiKey = ENV_CONFIG.GOOGLE_MAPS_API_KEY;
   const googleMapsApi = useGoogleMapsApi();
 
-  // Load the Google Maps JavaScript API asynchronously
-  const {isLoaded: scriptLoaded, loadError} = useJsApiLoader({
-    googleMapsApiKey,
-    libraries: libraries as Libraries,
-  });
+  if (!googleMapsApi) {
+    return <SkeletonForTopPlacesToVisit isMaps />;
+  }
 
-  if (loadError || googleMapsApi?.loadError) return <p>Encountered error while loading google maps</p>;
+  if (googleMapsApi.isKeyMissing || googleMapsApi.loadError || googleMapsApi.isTimedOut) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+        Google Maps is unavailable. Add destinations from suggestions or update the Maps API key.
+      </div>
+    );
+  }
 
-  if ((!scriptLoaded || !googleMapsApi?.isLoaded) || isLoading) return <SkeletonForTopPlacesToVisit isMaps />;
+  if (!googleMapsApi.isLoaded || isLoading) {
+    return <SkeletonForTopPlacesToVisit isMaps />;
+  }
 
-  // Return the children prop wrapped by this MapProvider component
   return children;
 }
