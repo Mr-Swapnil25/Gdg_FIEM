@@ -1,7 +1,7 @@
 "use client";
 
-import {ReactNode, createContext, useContext, useEffect, useMemo, useState} from "react";
 import {Libraries, useJsApiLoader} from "@react-google-maps/api";
+import {ReactNode, createContext, useContext, useEffect, useMemo, useState} from "react";
 
 import {SkeletonForTopPlacesToVisit} from "@/components/sections/TopPlacesToVisit";
 import {ENV_CONFIG, isGoogleMapsApiKeyMissing} from "@/lib/env-config";
@@ -23,6 +23,7 @@ export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
   const isKeyMissing = isGoogleMapsApiKeyMissing();
 
   const {isLoaded, loadError} = useJsApiLoader({
+    id: "google-maps-script",
     googleMapsApiKey: ENV_CONFIG.GOOGLE_MAPS_API_KEY ?? "",
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
@@ -33,8 +34,8 @@ export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
       return;
     }
 
-    const timeout = setTimeout(() => setIsTimedOut(true), MAPS_LOAD_TIMEOUT_MS);
-    return () => clearTimeout(timeout);
+    const timer = setTimeout(() => setIsTimedOut(true), MAPS_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
   }, [isKeyMissing, isLoaded, loadError]);
 
   const value = useMemo(
@@ -44,7 +45,7 @@ export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
       isKeyMissing,
       isTimedOut,
     }),
-    [isKeyMissing, isLoaded, isTimedOut, loadError]
+    [isLoaded, loadError, isKeyMissing, isTimedOut]
   );
 
   return <GoogleMapsApiContext.Provider value={value}>{children}</GoogleMapsApiContext.Provider>;
@@ -64,7 +65,7 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
   if (googleMapsApi.isKeyMissing || googleMapsApi.loadError || googleMapsApi.isTimedOut) {
     return (
       <div className="flex h-full items-center justify-center rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-        Google Maps is unavailable. Add destinations from suggestions or update the Maps API key.
+        Google Maps is unavailable. Enter destination manually.
       </div>
     );
   }

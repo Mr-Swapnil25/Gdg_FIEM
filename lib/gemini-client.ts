@@ -9,11 +9,11 @@ type GenerateOptions = {
 export type GeminiGenerationErrorCode =
   | "MISSING_GEMINI_API_KEY"
   | "GEMINI_TIMEOUT"
-  | "GEMINI_INVALID_JSON"
+  | "PARSE_ERROR"
   | "GEMINI_INVALID_RESPONSE"
   | "GEMINI_REQUEST_FAILED";
 
-const DEFAULT_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-1.5-flash";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class GeminiGenerationError extends Error {
@@ -38,35 +38,24 @@ export class GeminiGenerationError extends Error {
 async function getClient() {
   const {GoogleGenerativeAI} = await import("@google/generative-ai");
   const apiKey = ENV_CONFIG.GEMINI_API_KEY;
+
   if (!apiKey) {
     throw new GeminiGenerationError(
       "MISSING_GEMINI_API_KEY",
       "Missing NEXT_PUBLIC_GEMINI_API_KEY."
     );
   }
+
   return new GoogleGenerativeAI(apiKey);
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
+function timeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
       reject(
-        new GeminiGenerationError(
-          "GEMINI_TIMEOUT",
-          `Gemini request timed out after ${timeoutMs}ms.`
-        )
+        new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`)
       );
-    }, timeoutMs);
-
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
+    }, ms);
   });
 }
 
@@ -79,53 +68,59 @@ function normalizeGeminiError(error: unknown) {
   );
 }
 
+async function geminiCall(
+  prompt: string,
+  preferences?: Record<string, unknown>,
+  options?: GenerateOptions
+) {
+  const client = await getClient();
+  const model = client.getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: options?.temperature ?? 0.2,
+    },
+  });
+
+  const fullPrompt = buildPrompt(prompt, preferences);
+  const result = await model.generateContent(fullPrompt);
+  const rawText = result.response.text().trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (parseError) {
+    console.error("Raw Gemini output:", rawText);
+    throw new GeminiGenerationError(
+      "PARSE_ERROR",
+      "AI returned unexpected format. Please retry.",
+      {cause: parseError, rawResponse: rawText}
+    );
+  }
+
+  try {
+    assertTripItinerary(parsed);
+  } catch (shapeError) {
+    throw new GeminiGenerationError(
+      "GEMINI_INVALID_RESPONSE",
+      "Gemini response is missing required itinerary fields.",
+      {cause: shapeError, rawResponse: rawText}
+    );
+  }
+
+  return parsed;
+}
+
 export async function generateTripWithGemini(
   prompt: string,
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
   try {
-    const client = await getClient();
-    const fullPrompt = buildPrompt(prompt, preferences);
-    const model = client.getGenerativeModel({
-      model: DEFAULT_MODEL,
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: options?.temperature ?? 0.2,
-      },
-    });
-
-    const result = await withTimeout(
-      model.generateContent(fullPrompt),
-      options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
-    );
-    const rawResponse = result.response.text().trim();
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawResponse);
-    } catch (parseError) {
-      console.error("Gemini returned invalid JSON:", rawResponse);
-      throw new GeminiGenerationError("GEMINI_INVALID_JSON", "Gemini returned invalid JSON.", {
-        cause: parseError,
-        rawResponse,
-      });
-    }
-
-    try {
-      assertTripItinerary(parsed);
-    } catch (shapeError) {
-      throw new GeminiGenerationError(
-        "GEMINI_INVALID_RESPONSE",
-        "Gemini response is missing required itinerary fields.",
-        {
-          cause: shapeError,
-          rawResponse,
-        }
-      );
-    }
-
-    return parsed;
+    return await Promise.race([
+      geminiCall(prompt, preferences, options),
+      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+    ]);
   } catch (error) {
     throw normalizeGeminiError(error);
   }
@@ -144,9 +139,11 @@ Return a JSON object that matches this JSON schema exactly:
 ${JSON.stringify(TripItinerarySchema)}
 
 Respond with ONLY a valid JSON object. No markdown, no code fences, no explanation. Start directly with { and end with }.`;
+
   if (preferences && Object.keys(preferences).length > 0) {
     prompt += `\n\nPreferences:\n${JSON.stringify(preferences)}`;
   }
+
   return prompt;
 }
 
@@ -192,6 +189,7 @@ function assertTripItinerary(value: unknown): asserts value is TripItinerary {
       if (!Array.isArray(slot)) {
         throw new Error("Gemini itinerary activity slot must be an array.");
       }
+
       for (const item of slot) {
         if (
           !isRecord(item) ||

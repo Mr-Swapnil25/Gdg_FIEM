@@ -1,15 +1,12 @@
-import type { Metadata } from "next";
-import { Montserrat_Alternates } from "next/font/google";
-import { ThemeProvider } from "@/contexts/ThemeProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { GoogleMapsApiProvider } from "@/contexts/MapProvider";
+import type {Metadata} from "next";
 
 import Progress from "@/components/Progress";
-import { Toaster } from "@/components/ui/toaster";
+import {Toaster} from "@/components/ui/toaster";
+import {AuthProvider} from "@/contexts/AuthContext";
+import {GoogleMapsApiProvider} from "@/contexts/MapProvider";
+import {ThemeProvider} from "@/contexts/ThemeProvider";
 
 import "./globals.css";
-
-const inter = Montserrat_Alternates({ weight: "500", subsets: ["cyrillic"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gemitrek--promptspirit.us-central1.hosted.app"),
@@ -46,7 +43,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans">
         <GoogleMapsApiProvider>
           <ThemeProvider
             attribute="class"

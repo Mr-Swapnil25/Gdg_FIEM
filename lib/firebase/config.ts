@@ -1,10 +1,17 @@
 import {getApp, getApps, initializeApp} from "firebase/app";
-import {browserLocalPersistence, getAuth, setPersistence} from "firebase/auth";
-import type {Auth} from "firebase/auth";
+import {browserLocalPersistence, getAuth, setPersistence, type Auth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
 import {getStorage} from "firebase/storage";
 
-import {ENV_CONFIG, getMissingFirebaseEnvKeys, hasCompleteFirebaseConfig} from "@/lib/env-config";
+import {ENV_CONFIG, getMissingFirebaseEnvKeys} from "@/lib/env-config";
+
+export const missingFirebaseEnvKeys = getMissingFirebaseEnvKeys();
+
+if (missingFirebaseEnvKeys.length > 0) {
+  console.error(
+    `[firebase/config] Missing Firebase environment variables: ${missingFirebaseEnvKeys.join(", ")}`
+  );
+}
 
 const firebaseConfig = {
   apiKey: ENV_CONFIG.FIREBASE_API_KEY ?? "",
@@ -15,12 +22,12 @@ const firebaseConfig = {
   appId: ENV_CONFIG.FIREBASE_APP_ID ?? "",
 };
 
-export const missingFirebaseEnvKeys = getMissingFirebaseEnvKeys();
-export let firebaseInitError = hasCompleteFirebaseConfig()
-  ? null
-  : `Missing Firebase environment variables: ${missingFirebaseEnvKeys.join(", ")}`;
+export let firebaseInitError: string | null =
+  missingFirebaseEnvKeys.length > 0
+    ? `Missing Firebase environment variables: ${missingFirebaseEnvKeys.join(", ")}`
+    : null;
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 function initializeAuthSafely(): Auth | null {
   if (typeof window === "undefined") {
@@ -38,7 +45,6 @@ function initializeAuthSafely(): Auth | null {
   }
 }
 
-export const firebaseApp = app;
 export const auth = initializeAuthSafely();
 export const db = getFirestore(app);
 export const storage = getStorage(app);

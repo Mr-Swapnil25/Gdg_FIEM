@@ -1,15 +1,15 @@
 "use server";
 
-import {differenceInDays} from "date-fns";
 import {Client} from "@googlemaps/google-maps-services-js";
+import {differenceInDays} from "date-fns";
 
-import {formSchemaType} from "@/components/NewPlanForm";
-import {saveTripToFirestore} from "@/lib/firebase/firestore-db";
+import type {formSchemaType} from "@/components/NewPlanForm";
 import {
-  generateTripWithGemini,
   GeminiGenerationError,
+  generateTripWithGemini,
+  type GeminiGenerationErrorCode,
 } from "@/lib/gemini-client";
-import type {GeminiGenerationErrorCode} from "@/lib/gemini-client";
+import {saveTripToFirestore} from "@/lib/firebase/firestore-db";
 
 type GeneratePlanActionErrorCode =
   | GeminiGenerationErrorCode
@@ -19,6 +19,16 @@ type GeneratePlanActionErrorCode =
 export type GeneratePlanActionResult =
   | {ok: true; planId: string}
   | {ok: false; errorCode: GeneratePlanActionErrorCode; errorMessage: string};
+
+const GEMINI_TIMEOUT_MS = 30_000;
+
+function timeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
+    }, ms);
+  });
+}
 
 function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
   if (error instanceof GeminiGenerationError) {
@@ -51,7 +61,6 @@ export async function generatePlanAction(
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
-  console.log("[generatePlanAction] [1] Starting plan generation", { placeName: formData.placeName });
   try {
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
@@ -59,25 +68,26 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    console.log("[generatePlanAction] [2] Sending prompt to Gemini");
-    const generated = await generateTripWithGemini(prompt, {
-      placeName,
-      activityPreferences,
-      companion,
-      fromDate: datesOfTravel.from.toISOString(),
-      toDate: datesOfTravel.to.toISOString(),
-      currency: "INR",
-      distanceUnit: "km",
-      region: "IN",
-    });
+    const generated = await Promise.race([
+      generateTripWithGemini(prompt, {
+        placeName,
+        activityPreferences,
+        companion,
+        fromDate: datesOfTravel.from.toISOString(),
+        toDate: datesOfTravel.to.toISOString(),
+        currency: "INR",
+        distanceUnit: "km",
+        region: "IN",
+      }),
+      timeout(GEMINI_TIMEOUT_MS),
+    ]);
 
     let mainImageUrl: string | null = null;
-    
-    // Google Maps Connection - Fetch exact coordinates for topPlacesToVisit and a main image for the plan
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
     if (googleMapsApiKey) {
       const mapsClient = new Client({});
-      
+
       try {
         const placeResponse = await mapsClient.textSearch({
           params: {
@@ -94,12 +104,11 @@ export async function generatePlanAction(
             mainImageUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${googleMapsApiKey}`;
           }
         }
-      } catch (e) {
-        console.warn(`Failed to fetch image for place ${placeName}`, e);
+      } catch (error) {
+        console.warn(`Failed to fetch main image for ${placeName}:`, error);
       }
 
-      console.log("[generatePlanAction] [3] Resolving topPlacesToVisit geocodes", { count: generated.topPlacesToVisit.length });
-      const mappedPlacesData = await Promise.all(
+      generated.topPlacesToVisit = await Promise.all(
         generated.topPlacesToVisit.map(async (place) => {
           try {
             const geocodeResponse = await mapsClient.textSearch({
@@ -115,25 +124,22 @@ export async function generatePlanAction(
               return {
                 ...place,
                 coordinates: {
-                  lat: exactPlace.geometry?.location.lat || place.coordinates.lat,
-                  lng: exactPlace.geometry?.location.lng || place.coordinates.lng,
+                  lat: exactPlace.geometry?.location.lat ?? place.coordinates.lat,
+                  lng: exactPlace.geometry?.location.lng ?? place.coordinates.lng,
                 },
               };
             }
           } catch (mapError) {
-            console.warn(`Failed to fetch mapped location for ${place.name}`, mapError);
+            console.warn(`Failed to geocode "${place.name}":`, mapError);
           }
+
           return place;
         })
       );
-      
-      generated.topPlacesToVisit = mappedPlacesData;
     }
 
-    console.log("[generatePlanAction] [4] Saving generated plan to Firestore");
-    let planId: string;
     try {
-      planId = await saveTripToFirestore(userId, {
+      const planId = await saveTripToFirestore(userId, {
         nameoftheplace: placeName,
         userPrompt: prompt,
         noOfDays: noOfDays.toString(),
@@ -165,6 +171,8 @@ export async function generatePlanAction(
           besttimetovisit: true,
         },
       });
+
+      return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
       return {
@@ -173,12 +181,8 @@ export async function generatePlanAction(
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-
-    return {ok: true, planId};
-  } catch (error: any) {
-    console.error("Error generating plan (CRITICAL):", error);
+  } catch (error) {
+    console.error("Error generating plan:", error);
     return toErrorResult(error);
-  } finally {
-    console.log("[generatePlanAction] [FINALLY] generatePlanAction completed for", { placeName: formData.placeName });
   }
 }

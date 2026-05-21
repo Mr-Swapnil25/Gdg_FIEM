@@ -2,7 +2,7 @@
 
 import {differenceInDays} from "date-fns";
 
-import {formSchemaType} from "@/components/NewPlanForm";
+import type {formSchemaType} from "@/components/NewPlanForm";
 import {saveTripToFirestore} from "@/lib/firebase/firestore-db";
 
 export async function generateEmptyPlanAction(

@@ -4,6 +4,8 @@ import {useAuthContext} from "@/contexts/AuthContext";
 import {fetchTripById} from "@/lib/firebase/firestore-db";
 import {PlanDoc} from "@/lib/types/firestore";
 
+const PLAN_FETCH_TIMEOUT_MS = 30_000;
+
 const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
   const {user, loading: authLoading} = useAuthContext();
   const [plan, setPlan] = useState<PlanDoc | null | undefined>(undefined);
@@ -22,20 +24,18 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
       setError(undefined);
 
       try {
-        console.log("[usePlan] [1] Fetching plan", { planId, isPublic });
-
-        // Race fetch with a 30s timeout to avoid indefinite pending state
         const fetchPromise = fetchTripById(planId, user?.uid, isPublic);
-        const timeoutPromise = new Promise<null>((_res, rej) => {
-          timer = setTimeout(() => rej(new Error("fetchTripById timed out")), 30000);
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("fetchTripById timed out")), PLAN_FETCH_TIMEOUT_MS);
         });
 
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
-
         if (cancelled) return;
-        console.log("[usePlan] [2] Fetch resolved", { planId, trip: !!trip });
+
         setPlan(trip);
-        if (!trip) setError("Plan not found or access denied.");
+        if (!trip) {
+          setError("Plan not found or access denied.");
+        }
       } catch (err) {
         if (cancelled) return;
         console.error("[usePlan] Fetch error:", err);
@@ -45,7 +45,6 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         if (timer) clearTimeout(timer);
         if (cancelled) return;
         setIsFetching(false);
-        console.log("[usePlan] [FINALLY] Fetch complete", { planId });
       }
     }
 
@@ -53,23 +52,24 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [authLoading, isPublic, planId, user?.uid]);
 
-    const shouldShowAlert =
+  const shouldShowAlert =
+    Boolean(
       plan?.isGeneratedUsingAI &&
-      isNewPlan &&
-      plan &&
-      Object.values(plan.contentGenerationState).some((value) => value === false)
-        ? true
-        : false;
+        isNewPlan &&
+        plan &&
+        Object.values(plan.contentGenerationState).some((value) => value === false)
+    ) ?? false;
 
-    return {
-      shouldShowAlert,
-      plan,
-      isLoading: authLoading || isFetching,
-      error,
-    };
+  return {
+    shouldShowAlert,
+    plan,
+    isLoading: authLoading || isFetching,
+    error,
+  };
 };
 
 export default usePlan;
