@@ -1,6 +1,7 @@
 import TripItinerarySchema, { TripItinerary } from "./schemas";
 
 console.log("Production Check - Gemini Key Exists:", !!process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+const fallbackGeminiApiKey = "AIzaSyCYupdOZqvQSknHJdWVTFLWS7Dt_qGWKzc";
 
 // Lightweight wrapper around the Google Generative AI client.
 // This file assumes `@google/generative-ai` is installed and that
@@ -15,7 +16,7 @@ const DEFAULT_MODEL = "gemini-1.5-flash";
 
 async function getClient() {
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || fallbackGeminiApiKey;
   if (!apiKey) {
     throw new Error("Missing NEXT_PUBLIC_GEMINI_API_KEY");
   }

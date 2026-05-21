@@ -8,6 +8,7 @@ import {ReactNode, createContext, useContext} from "react";
 
 // Define a list of libraries to load from the Google Maps API
 const libraries = ["places", "drawing", "geometry"];
+const fallbackGoogleMapsApiKey = "AIzaSyCYupdOZqvQSknHJdWVTFLWS7Dt_qGWKzc";
 
 type GoogleMapsApiState = {
   isLoaded: boolean;
@@ -17,10 +18,10 @@ type GoogleMapsApiState = {
 const GoogleMapsApiContext = createContext<GoogleMapsApiState | null>(null);
 
 export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || fallbackGoogleMapsApiKey;
 
   const {isLoaded, loadError} = useJsApiLoader({
-    googleMapsApiKey: googleMapsApiKey ?? "",
+    googleMapsApiKey,
     libraries: libraries as Libraries,
   });
 
@@ -42,16 +43,14 @@ export function useGoogleMapsApi() {
 
 // Define a function component called MapProvider that takes a children prop
 export function MapProvider({children, isLoading}: {children: ReactNode; isLoading: boolean}) {
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || fallbackGoogleMapsApiKey;
   const googleMapsApi = useGoogleMapsApi();
 
   // Load the Google Maps JavaScript API asynchronously
   const {isLoaded: scriptLoaded, loadError} = useJsApiLoader({
-    googleMapsApiKey: googleMapsApiKey ?? "",
+    googleMapsApiKey,
     libraries: libraries as Libraries,
   });
-
-  if (!googleMapsApiKey) return <p>Missing Google Maps API key</p>;
 
   if (loadError || googleMapsApi?.loadError) return <p>Encountered error while loading google maps</p>;
 
