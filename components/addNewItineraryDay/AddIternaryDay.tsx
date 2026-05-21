@@ -2,7 +2,7 @@
 import {useState} from "react";
 
 import {Button} from "@/components/ui/button";
-import {Dialog, DialogContent, DialogTrigger} from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger} from "@/components/ui/dialog";
 import {PlusCircleIcon} from "lucide-react";
 
 import ItineraryDayForm from "@/components/addNewItineraryDay/ItineraryDayForm";
@@ -19,6 +19,10 @@ export function AddIternaryDay({planId}: {planId: string}) {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
+        <DialogTitle className="sr-only">Add a day</DialogTitle>
+        <DialogDescription className="sr-only">
+          Add activities for a new itinerary day.
+        </DialogDescription>
         <ItineraryDayForm planId={planId} setOpen={setOpen} />
       </DialogContent>
     </Dialog>

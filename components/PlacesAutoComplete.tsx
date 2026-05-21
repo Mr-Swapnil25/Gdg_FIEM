@@ -1,17 +1,10 @@
 "use client";
 import { Input } from "@/components/ui/input";
-import {
-  ChangeEvent,
-  Dispatch,
-  MouseEvent,
-  SetStateAction,
-  useEffect,
-  useState,
-} from "react";
-import usePlacesService from "react-google-autocomplete/lib/usePlacesAutocompleteService";
+import { ChangeEvent, Dispatch, MouseEvent, SetStateAction, useState } from "react";
 import { Loading } from "@/components/shared/Loading";
 import { ControllerRenderProps, UseFormReturn } from "react-hook-form";
 import { formSchemaType } from "@/components/NewPlanForm";
+import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete";
 
 type PlacesAutoCompleteProps = {
   selectedFromList: boolean;
@@ -29,19 +22,8 @@ const PlacesAutoComplete = ({
   const [showReults, setShowResults] = useState(false);
   const isEnglish = (text: string) => /^[A-Za-z0-9\s,.-]+$/.test(text);
 
-  const {
-    placesService,
-    placePredictions,
-    getPlacePredictions,
-    isPlacePredictionsLoading,
-  } = usePlacesService({
-    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-    options: {
-      types: ["(regions)"],
-      componentRestrictions: { country: "in" },
-      input: field.value,
-    },
-  });
+  const {predictions: placePredictions, isLoading: isPlacePredictionsLoading} =
+    useGooglePlacesAutocomplete({input: field.value});
 
   const hadleSelectItem = (
     e: MouseEvent<HTMLLIElement>,
@@ -79,17 +61,7 @@ const PlacesAutoComplete = ({
 
     const value = e.target.value;
     field.onChange(e.target.value);
-
-    //predictions
-    if (value) {
-      getPlacePredictions({
-        input: value,
-        componentRestrictions: { country: "in" },
-      });
-      setShowResults(true);
-    } else {
-      setShowResults(false);
-    }
+    setShowResults(Boolean(value));
   };
 
   return (
@@ -127,7 +99,7 @@ const PlacesAutoComplete = ({
                 hover:bg-blue-50 hover:text-blue-600 hover:rounded-lg
                 px-2 py-3 text-sm"
                 onMouseDown={(e) => hadleSelectItem(e, item.description)}
-                key={item.place_id}
+                key={item.key}
               >
                 {item.description}
               </li>

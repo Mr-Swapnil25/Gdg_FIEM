@@ -122,7 +122,9 @@ const DrawerWithDialog = ({
       <>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>{dialogTriggerBtn}</DialogTrigger>
-          <DialogContent className="max-w-xl">{renderContent()}</DialogContent>
+          <DialogContent className="max-w-xl" aria-describedby={undefined}>
+            {renderContent()}
+          </DialogContent>
         </Dialog>
       </>
     );

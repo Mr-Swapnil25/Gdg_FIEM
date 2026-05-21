@@ -2,7 +2,7 @@ import Header from "@/components/dashboard/Header";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://gemitrek.app"),
+  metadataBase: new URL("https://gemitrek--promptspirit.us-central1.hosted.app"),
   title: {
     default: "Dashboard",
     template: "%s | GemiTrek",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: "GemiTrek - Your Smart Travel Planner",
     description:
       "GemiTrek provides intelligent travel suggestions, personalized itineraries, and seamless trip planning. Plan your perfect trip with ease.",
-    url: "https://gemitrek.app",
+    url: "https://gemitrek--promptspirit.us-central1.hosted.app",
     type: "website",
     siteName: "GemiTrek",
     images: [

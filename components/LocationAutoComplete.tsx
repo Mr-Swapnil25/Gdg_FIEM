@@ -1,11 +1,12 @@
 "use client";
 import {Input} from "@/components/ui/input";
 import {ChangeEvent, MouseEvent, useState} from "react";
-import usePlacesService from "react-google-autocomplete/lib/usePlacesAutocompleteService";
 import {Loading} from "@/components/shared/Loading";
 import {Search} from "lucide-react";
 import {useToast} from "@/components/ui/use-toast";
 import {updatePlaceToVisit} from "@/lib/firebase/firestore-db";
+import {extractPlaceCoordinates} from "@/lib/google-places";
+import {useGooglePlacesAutocomplete} from "@/hooks/useGooglePlacesAutocomplete";
 
 type LocationAutoCompletePropType = {
   planId: string;
@@ -19,52 +20,45 @@ const LocationAutoComplete = ({planId, addNewPlaceToTopPlaces}: LocationAutoComp
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const {placesService, placePredictions, getPlacePredictions, isPlacePredictionsLoading} =
-    usePlacesService({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-      options: {
-        componentRestrictions: {country: "in"},
-        input: searchQuery,
-      },
-    });
+  const {predictions: placePredictions, isLoading: isPlacePredictionsLoading} =
+    useGooglePlacesAutocomplete({input: searchQuery});
 
-  const hadleSelectItem = (e: MouseEvent<HTMLLIElement>, placeId: string) => {
+  const hadleSelectItem = async (
+    e: MouseEvent<HTMLLIElement>,
+    placePrediction: google.maps.places.PlacePrediction
+  ) => {
     e.stopPropagation();
     setShowResults(false);
     setIsSaving(true);
     const {dismiss} = toast({
       description: `Adding the selected place!`,
     });
-    placesService?.getDetails({placeId}, (e) => {
-      const lat = e?.geometry?.location?.lat();
-      const lng = e?.geometry?.location?.lng();
-      if (!lat || !lng || !e?.name) return;
 
-      updatePlaceToVisit(planId, {
-        placeName: e?.name,
-        lat,
-        lng,
-      }).then(() => {
-        setSearchQuery("");
-        setIsSaving(false);
-        dismiss();
-        addNewPlaceToTopPlaces(lat, lng, e.name || "New Place");
+    try {
+      const place = placePrediction.toPlace();
+      await place.fetchFields({fields: ["displayName", "location"]});
+      const coordinates = extractPlaceCoordinates(place.location);
+
+      if (!coordinates || !place.displayName) return;
+
+      await updatePlaceToVisit(planId, {
+        placeName: place.displayName,
+        lat: coordinates.lat,
+        lng: coordinates.lng,
       });
-    });
+
+      setSearchQuery("");
+      dismiss();
+      addNewPlaceToTopPlaces(coordinates.lat, coordinates.lng, place.displayName);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    if (value) {
-      getPlacePredictions({
-        input: value,
-        componentRestrictions: {country: "in"},
-      });
-      setShowResults(true);
-    } else {
-      setShowResults(false);
-    }
+    setShowResults(Boolean(value));
   };
 
   return (
@@ -104,8 +98,8 @@ const LocationAutoComplete = ({planId, addNewPlaceToTopPlaces}: LocationAutoComp
                 flex justify-between items-center text-black font-medium
                 hover:bg-blue-50 hover:text-blue-600 hover:rounded-lg
                 px-2 py-3 text-sm"
-                onMouseDown={(e) => hadleSelectItem(e, item.place_id)}
-                key={item.place_id}
+                  onMouseDown={(e) => hadleSelectItem(e, item.placePrediction)}
+                  key={item.key}
               >
                 {item.description}
               </li>

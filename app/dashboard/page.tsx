@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     title: "GemiTrek - Your Smart Travel Planner",
     description:
       "GemiTrek provides intelligent travel suggestions, personalized itineraries, and seamless trip planning. Plan your perfect trip with ease.",
-    url: "https://gemitrek.app",
+    url: "https://gemitrek--promptspirit.us-central1.hosted.app",
     type: "website",
     siteName: "GemiTrek",
     images: [
       {
-        url: "https://gemitrek.app/images/og-image.jpg",
+        url: "https://gemitrek--promptspirit.us-central1.hosted.app/images/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "GemiTrek",
