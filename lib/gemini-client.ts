@@ -1,5 +1,7 @@
 import TripItinerarySchema, { TripItinerary } from "./schemas";
 
+console.log("Production Check - Gemini Key Exists:", !!process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+
 // Lightweight wrapper around the Google Generative AI client.
 // This file assumes `@google/generative-ai` is installed and that
 // `process.env.NEXT_PUBLIC_GEMINI_API_KEY` contains a valid key.
@@ -25,12 +27,11 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
-  const client = await getClient();
-  const model = options?.model || DEFAULT_MODEL;
-
-  const fullPrompt = buildPrompt(prompt, preferences);
-
   try {
+    const client = await getClient();
+    const model = options?.model || DEFAULT_MODEL;
+    const fullPrompt = buildPrompt(prompt, preferences);
+
     const generativeModel = client.getGenerativeModel({
       model,
       generationConfig: {
@@ -43,9 +44,9 @@ export async function generateTripWithGemini(
     const parsed = safeJsonParse(result.response.text());
     assertTripItinerary(parsed);
     return parsed;
-  } catch (err) {
-    console.error("GEMINI API ERROR:", err);
-    throw err;
+  } catch (error) {
+    console.error("GEMINI PROD ERROR:", error);
+    throw error;
   }
 }
 

@@ -25,6 +25,7 @@ import CompanionControl from "@/components/plan/CompanionControl";
 import ActivityPreferences from "@/components/plan/ActivityPreferences";
 import DateRangeSelector from "@/components/common/DateRangeSelector";
 import {useAuthContext} from "@/contexts/AuthContext";
+import {useGoogleMapsApi} from "@/contexts/MapProvider";
 
 const formSchema = z.object({
   placeName: z
@@ -52,6 +53,8 @@ const NewPlanForm = ({
 }) => {
   const { user } = useAuthContext();
   const userId = user?.uid ?? "";
+  const googleMapsApi = useGoogleMapsApi();
+  const isGoogleMapsLoaded = googleMapsApi?.isLoaded ?? false;
 
   const [isLoadingEmptyPlan, setIsLoadingEmptyPlan] = useState(false);
   const [isLoadingAIPlan, setIsLoadingAIPlan] = useState(false);
@@ -77,6 +80,17 @@ const NewPlanForm = ({
   if (!userId) return null;
 
   async function onSubmitEmptyPlan(values: z.infer<typeof formSchema>) {
+    if (typeof window === "undefined" || !window.google || !window.google.maps) {
+      console.error("Google Maps API is not loaded yet. Please wait.");
+      toast({
+        title: "Maps loading",
+        description: "Google Maps API is not loaded yet. Please wait.",
+        variant: "destructive",
+      });
+      setIsLoadingEmptyPlan(false);
+      return;
+    }
+
     if (!selectedFromList) {
       form.setError("placeName", {
         message: "Place should be selected from the list",
@@ -111,6 +125,17 @@ const NewPlanForm = ({
   }
 
   async function onSubmitAIPlan(values: z.infer<typeof formSchema>) {
+    if (typeof window === "undefined" || !window.google || !window.google.maps) {
+      console.error("Google Maps API is not loaded yet. Please wait.");
+      toast({
+        title: "Maps loading",
+        description: "Google Maps API is not loaded yet. Please wait.",
+        variant: "destructive",
+      });
+      setIsLoadingAIPlan(false);
+      return;
+    }
+
     if (!selectedFromList) {
       form.setError("placeName", {
         message: "Place should be selected from the list",
@@ -154,12 +179,18 @@ const NewPlanForm = ({
             <FormItem>
               <FormLabel>Search for your destination city</FormLabel>
               <FormControl>
-                <PlacesAutoComplete
-                  field={field}
-                  form={form}
-                  selectedFromList={selectedFromList}
-                  setSelectedFromList={setSelectedFromList}
-                />
+                {isGoogleMapsLoaded ? (
+                  <PlacesAutoComplete
+                    field={field}
+                    form={form}
+                    selectedFromList={selectedFromList}
+                    setSelectedFromList={setSelectedFromList}
+                  />
+                ) : (
+                  <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    Loading Google Maps search...
+                  </div>
+                )}
               </FormControl>
               <FormMessage />
             </FormItem>

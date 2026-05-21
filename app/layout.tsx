@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat_Alternates } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { GoogleMapsApiProvider } from "@/contexts/MapProvider";
 
 import Progress from "@/components/Progress";
 import { Toaster } from "@/components/ui/toaster";
@@ -46,16 +47,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          forcedTheme="light"
-          disableTransitionOnChange
-        >
-          <AuthProvider>{children}</AuthProvider>
-          <Progress />
-          <Toaster />
-        </ThemeProvider>
+        <GoogleMapsApiProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            forcedTheme="light"
+            disableTransitionOnChange
+          >
+            <AuthProvider>{children}</AuthProvider>
+            <Progress />
+            <Toaster />
+          </ThemeProvider>
+        </GoogleMapsApiProvider>
       </body>
     </html>
   );
