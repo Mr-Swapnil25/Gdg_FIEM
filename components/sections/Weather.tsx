@@ -3,7 +3,6 @@ import SectionWrapper from "@/components/sections/SectionWrapper";
 import {Input} from "@/components/ui/input";
 import {Skeleton} from "@/components/ui/skeleton";
 import {usePlanContext} from "@/contexts/PlanContextProvider";
-import {CurrentWeatherResponse} from "@/lib/types/WeatherResponse";
 import {
   Cloud,
   Compass,
@@ -16,67 +15,225 @@ import {
   Waves,
   Wind,
 } from "lucide-react";
-import Image from "next/image";
 import {ReactNode, useEffect, useState} from "react";
+
+type GoogleGeocodeResponse = {
+  status: string;
+  error_message?: string;
+  results: Array<{
+    formatted_address: string;
+    geometry: {
+      location: {
+        lat: number;
+        lng: number;
+      };
+    };
+  }>;
+};
+
+type GoogleWeatherResponse = {
+  weatherCondition?: {
+    iconBaseUri?: string;
+    description?: {
+      text?: string;
+    };
+  };
+  temperature?: {
+    degrees?: number;
+  };
+  feelsLikeTemperature?: {
+    degrees?: number;
+  };
+  currentConditionsHistory?: {
+    maxTemperature?: {
+      degrees?: number;
+    };
+    minTemperature?: {
+      degrees?: number;
+    };
+  };
+  relativeHumidity?: number;
+  wind?: {
+    direction?: {
+      degrees?: number;
+    };
+    speed?: {
+      value?: number;
+      unit?: string;
+    };
+  };
+  visibility?: {
+    distance?: number;
+    unit?: string;
+  };
+  airPressure?: {
+    meanSeaLevelMillibars?: number;
+  };
+};
+
+type WeatherViewModel = {
+  placeName: string;
+  iconUrl?: string;
+  weatherDescription: string;
+  temperature: number;
+  windSpeed: number;
+  windUnit: string;
+  windDirection: number;
+  humidity: number;
+  maxTemperature: number;
+  minTemperature: number;
+  feelsLikeTemperature: number;
+  visibility: number;
+  visibilityUnit: string;
+  seaLevel?: number;
+};
 
 const Weather = ({placeName}: {placeName: string | undefined}) => {
   const {setPlanState} = usePlanContext();
-  const [weatherData, setWeatherData] = useState<CurrentWeatherResponse | undefined>(undefined);
+  const [weatherData, setWeatherData] = useState<WeatherViewModel | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!placeName) return;
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
-    if (!apiKey) {
+
+    let cancelled = false;
+
+    const weatherApiKey =
+      process.env.NEXT_PUBLIC_GOOGLE_WEATHER_API_KEY ?? process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+    if (!weatherApiKey) {
+      setErrorMessage("Missing Google Weather API key.");
       setPlanState((state) => ({...state, weather: true}));
       return;
     }
-    fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-        placeName
-      )},IN&appid=${apiKey}&units=metric`
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        if (data) {
-          setWeatherData(data);
+
+    if (!mapsApiKey) {
+      setErrorMessage("Missing Google Maps API key for weather lookup.");
+      setPlanState((state) => ({...state, weather: true}));
+      return;
+    }
+
+    setWeatherData(null);
+    setErrorMessage(null);
+
+    const resolveLocation = async () => {
+      const geocodeQueries = [placeName, `${placeName}, India`];
+
+      for (const query of geocodeQueries) {
+        const geocodeResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+            query
+          )}&key=${mapsApiKey}`
+        );
+        const geocodeData = (await geocodeResponse.json()) as GoogleGeocodeResponse;
+
+        if (geocodeData.status === "OK" && geocodeData.results.length > 0) {
+          return geocodeData.results[0];
         }
-      })
-      .catch((e) => {
-        console.error(e);
-        setWeatherData(undefined);
-      })
-      .finally(() => setPlanState((state) => ({...state, weather: true})));
-  }, [placeName]);
+      }
+
+      throw new Error(`Could not resolve coordinates for ${placeName}.`);
+    };
+
+    const loadWeather = async () => {
+      try {
+        const resolvedPlace = await resolveLocation();
+        const {lat, lng} = resolvedPlace.geometry.location;
+
+        const weatherResponse = await fetch(
+          `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
+        );
+        const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
+
+        if (!weatherResponse.ok) {
+          throw new Error("Google Weather API request failed.");
+        }
+
+        if (cancelled) return;
+
+        setWeatherData({
+          placeName: resolvedPlace.formatted_address ?? placeName,
+          iconUrl: weatherData.weatherCondition?.iconBaseUri
+            ? `${weatherData.weatherCondition.iconBaseUri}.svg`
+            : undefined,
+          weatherDescription:
+            weatherData.weatherCondition?.description?.text ?? "Weather unavailable",
+          temperature: weatherData.temperature?.degrees ?? 0,
+          windSpeed: weatherData.wind?.speed?.value ?? 0,
+          windUnit: formatWindUnit(weatherData.wind?.speed?.unit),
+          windDirection: weatherData.wind?.direction?.degrees ?? 0,
+          humidity: weatherData.relativeHumidity ?? 0,
+          maxTemperature:
+            weatherData.currentConditionsHistory?.maxTemperature?.degrees ??
+            weatherData.temperature?.degrees ??
+            0,
+          minTemperature:
+            weatherData.currentConditionsHistory?.minTemperature?.degrees ??
+            weatherData.temperature?.degrees ??
+            0,
+          feelsLikeTemperature:
+            weatherData.feelsLikeTemperature?.degrees ?? weatherData.temperature?.degrees ?? 0,
+          visibility: weatherData.visibility?.distance ?? 0,
+          visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
+          seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
+        });
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setWeatherData(null);
+          setErrorMessage(`Error loading weather information for ${placeName}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setPlanState((state) => ({...state, weather: true}));
+        }
+      }
+    };
+
+    void loadWeather();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [placeName, setPlanState]);
 
   return (
     <SectionWrapper id="weather">
       <h2 className="mb-2 text-lg font-semibold tracking-wide flex items-center">
         <Cloud className="mr-2" /> Weather
       </h2>
-      {!weatherData ? (
+      {errorMessage ? (
+        <p className="ml-8">{errorMessage}</p>
+      ) : !weatherData ? (
         <WeatherLoadingSkeleton />
-      ) : weatherData.cod != 404 ? (
+      ) : (
         <div className="grid md:grid-cols-2 auto-rows-auto grid-cols-1 grid-flow-row justify-center items-center min-h-[100px] gap-5">
           <WeatherTile>
             <Temperature
-              placeName={weatherData?.name}
-              iconName={weatherData.weather[0].icon}
-              weatherDesc={weatherData.weather[0].description}
-              temp={weatherData.main.temp}
+              placeName={weatherData.placeName}
+              iconUrl={weatherData.iconUrl}
+              weatherDesc={weatherData.weatherDescription}
+              temp={weatherData.temperature}
             />
           </WeatherTile>
           <WeatherTile>
-            <WindDeatils speed={weatherData.wind.speed} deg={weatherData.wind.deg} />
+            <WindDeatils
+              speed={weatherData.windSpeed}
+              deg={weatherData.windDirection}
+              speedUnit={weatherData.windUnit}
+            />
           </WeatherTile>
           <WeatherTile>
             <TempHumdityDetails weatherData={weatherData} />
           </WeatherTile>
           <WeatherTile>
-            <VisibilityDetails visibility={weatherData.visibility} />
+            <VisibilityDetails
+              visibility={weatherData.visibility}
+              visibilityUnit={weatherData.visibilityUnit}
+            />
           </WeatherTile>
         </div>
-      ) : (
-        <p className="ml-8">Error loading weather information for {placeName}</p>
       )}
     </SectionWrapper>
   );
@@ -96,12 +253,12 @@ const WeatherTile = ({children}: {children: ReactNode}) => {
 
 const Temperature = ({
   placeName,
-  iconName,
+  iconUrl,
   weatherDesc,
   temp,
 }: {
   placeName: string;
-  iconName: string;
+  iconUrl?: string;
   weatherDesc: string;
   temp: number;
 }) => {
@@ -111,13 +268,7 @@ const Temperature = ({
         <span>{placeName}</span>
       </div>
       <div className="flex justify-center items-center gap-1">
-        <Image
-          alt="weather icon"
-          width={100}
-          height={100}
-          className=""
-          src={`https://openweathermap.org/img/wn/${iconName}@2x.png`}
-        />
+        {iconUrl ? <img alt="weather icon" className="h-24 w-24" src={iconUrl} /> : null}
         <span className="text-4xl font-semibold">{Math.round(temp)}°</span>
       </div>
       <span className="capitalize text-muted-foreground text-sm">{weatherDesc}</span>
@@ -125,7 +276,13 @@ const Temperature = ({
   );
 };
 
-const VisibilityDetails = ({visibility}: {visibility: number}) => {
+const VisibilityDetails = ({
+  visibility,
+  visibilityUnit,
+}: {
+  visibility: number;
+  visibilityUnit: string;
+}) => {
   return (
     <>
       <div className="flex justify-center items-center">
@@ -141,14 +298,14 @@ const VisibilityDetails = ({visibility}: {visibility: number}) => {
       />
       <div className="flex justify-between items-center w-full">
         <EyeOff />
-        {visibility / 1000}km
+        {visibility} {visibilityUnit}
         <Eye />
       </div>
     </>
   );
 };
 
-const TempHumdityDetails = ({weatherData}: {weatherData: CurrentWeatherResponse}) => {
+const TempHumdityDetails = ({weatherData}: {weatherData: WeatherViewModel}) => {
   return (
     <>
       <div className="flex gap-2 justify-between w-full">
@@ -156,43 +313,51 @@ const TempHumdityDetails = ({weatherData}: {weatherData: CurrentWeatherResponse}
           <Droplets className="h-4 w-4" />
           <span>Humidity</span>
         </div>
-        <span>{Math.round(weatherData.main.humidity)}%</span>
+        <span>{Math.round(weatherData.humidity)}%</span>
       </div>
       <div className="flex gap-2 justify-between w-full">
         <div className="flex items-center gap-1">
           <ThermometerSun className="h-4 w-4" />
           <span>Max Temperature</span>
         </div>
-        <span>{Math.round(weatherData.main.temp_max)}°</span>
+        <span>{Math.round(weatherData.maxTemperature)}°</span>
       </div>
       <div className="flex gap-2 justify-between w-full">
         <div className="flex items-center gap-1">
           <ThermometerSnowflake className="h-4 w-4" />
           <span>Min Temperature</span>
         </div>
-        <span>{Math.round(weatherData.main.temp_min)}°</span>
+        <span>{Math.round(weatherData.minTemperature)}°</span>
       </div>
       <div className="flex gap-2 justify-between w-full">
         <div className="flex items-center gap-1">
           <Thermometer className="h-4 w-4" />
           <span>Feels like</span>
         </div>
-        <span>{Math.round(weatherData.main.feels_like)}°</span>
+        <span>{Math.round(weatherData.feelsLikeTemperature)}°</span>
       </div>
-      {weatherData?.main?.sea_level && (
+      {weatherData?.seaLevel !== undefined && (
         <div className="flex gap-2 justify-between w-full">
           <div className="flex items-center gap-1">
             <Waves className="h-4 w-4" />
             <span>Sea Level</span>
           </div>
-          <span>{Math.round(weatherData.main.sea_level)} hPa</span>
+          <span>{Math.round(weatherData.seaLevel)} hPa</span>
         </div>
       )}
     </>
   );
 };
 
-const WindDeatils = ({speed, deg}: {speed: number; deg: number}) => {
+const WindDeatils = ({
+  speed,
+  deg,
+  speedUnit,
+}: {
+  speed: number;
+  deg: number;
+  speedUnit: string;
+}) => {
   return (
     <div className="flex gap-5 justify-center items-center">
       <svg className="" height="100px" width="100px" version="1.1" viewBox="0 0 512 512">
@@ -275,7 +440,7 @@ const WindDeatils = ({speed, deg}: {speed: number; deg: number}) => {
       <div className="flex items-start justify-center gap-5 flex-col">
         <div className="flex justify-center items-center gap-1">
           <Wind className="h-5 w-5" />
-          <span className="text-sm">Wind Speed: {speed} m/s</span>
+          <span className="text-sm">Wind Speed: {speed} {speedUnit}</span>
         </div>
         <div className="flex justify-center items-center gap-1">
           <Compass className="h-5 w-5" />
@@ -302,3 +467,29 @@ const WeatherLoadingSkeleton = () => {
 };
 
 export default Weather;
+
+function formatWindUnit(unit?: string) {
+  switch (unit) {
+    case "KILOMETERS_PER_HOUR":
+      return "km/h";
+    case "MILES_PER_HOUR":
+      return "mph";
+    case "METERS_PER_SECOND":
+      return "m/s";
+    case "KNOTS":
+      return "knots";
+    default:
+      return "km/h";
+  }
+}
+
+function formatDistanceUnit(unit?: string) {
+  switch (unit) {
+    case "KILOMETERS":
+      return "km";
+    case "MILES":
+      return "miles";
+    default:
+      return "km";
+  }
+}
