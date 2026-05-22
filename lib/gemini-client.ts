@@ -13,7 +13,7 @@ export type GeminiGenerationErrorCode =
   | "GEMINI_INVALID_RESPONSE"
   | "GEMINI_REQUEST_FAILED";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class GeminiGenerationError extends Error {
