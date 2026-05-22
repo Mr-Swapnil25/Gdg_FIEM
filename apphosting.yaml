@@ -19,3 +19,8 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_GOOGLE_WEATHER_API_KEY
+    secret: NEXT_PUBLIC_GOOGLE_WEATHER_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME

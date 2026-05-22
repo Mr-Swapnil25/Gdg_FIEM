@@ -63,6 +63,7 @@ GemiTrek is a high-performance, AI-driven travel planning application that auton
 |---|---|---|
 | `NEXT_PUBLIC_GEMINI_API_KEY` | Yes | API credential for Gemini 2.5 Flash models. |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Yes | Access key targeting Google Maps Places and JS SDK APIs. |
+| `NEXT_PUBLIC_GOOGLE_WEATHER_API_KEY` | Yes | Google Weather API key used by the weather section. |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Target Google Cloud project client API key. |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Associated Firebase Auth endpoint domain. |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Google Cloud Platform project identifier. |
