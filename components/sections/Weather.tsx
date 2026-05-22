@@ -121,6 +121,24 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
       const geocodeQueries = [placeName, `${placeName}, India`];
 
       for (const query of geocodeQueries) {
+        if (globalThis.google?.maps?.Geocoder) {
+          const geocoder = new globalThis.google.maps.Geocoder();
+          const geocodeData = await geocoder.geocode({address: query});
+
+          if (geocodeData.results.length > 0) {
+            return {
+              formatted_address: geocodeData.results[0].formatted_address ?? query,
+              geometry: {
+                location: {
+                  lat: geocodeData.results[0].geometry.location.lat(),
+                  lng: geocodeData.results[0].geometry.location.lng(),
+                },
+              },
+            };
+          }
+          continue;
+        }
+
         const geocodeResponse = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             query

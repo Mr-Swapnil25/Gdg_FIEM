@@ -38,7 +38,6 @@ const ImageSection = ({
               sizes="100vw"
               className="w-full rounded-t-md object-cover z-0"
               fill
-              priority={true}
             />
             <div className="px-5 py-2 z-10 w-full bg-black/40">
               <h2 className="text-2xl text-white font-bold tracking-wide text-balance text-left">

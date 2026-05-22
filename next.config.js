@@ -19,6 +19,11 @@ const nextConfig = {
         hostname: "openweathermap.org",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "maps.googleapis.com",
+        port: "",
+      },
     ],
   },
   webpack: (config) => {
