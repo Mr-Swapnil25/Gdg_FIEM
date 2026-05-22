@@ -38,37 +38,26 @@ export function useGooglePlacesAutocomplete({
           includedRegionCodes,
         });
 
-        if (!globalThis.google?.maps?.places?.AutocompleteService) {
+        if (!globalThis.google?.maps?.importLibrary) {
           throw new Error("Google Maps Places library is not available yet.");
         }
 
-        const autocompleteService = new globalThis.google.maps.places.AutocompleteService();
+        const {AutocompleteSuggestion} = (await globalThis.google.maps.importLibrary(
+          "places"
+        )) as {
+          AutocompleteSuggestion: typeof google.maps.places.AutocompleteSuggestion;
+        };
 
-        const suggestions = await new Promise<google.maps.places.AutocompletePrediction[]>((resolve, reject) => {
-          autocompleteService.getPlacePredictions(
-            {
-              input: trimmedInput,
-              componentRestrictions: {
-                country: includedRegionCodes[0]?.toUpperCase() ?? "IN",
-              },
-            },
-            (predictions, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-                resolve([]);
-                return;
-              }
-
-              if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
-                reject(new Error(`AutocompleteService failed with status ${status}`));
-                return;
-              }
-
-              resolve(predictions);
-            }
-          );
+        const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input: trimmedInput,
+          includedRegionCodes,
         });
 
-        console.log("[useGooglePlacesAutocomplete] [2] Legacy Places API responded", {
+        const suggestions = response.suggestions
+          .map((suggestion) => suggestion.placePrediction)
+          .filter((prediction): prediction is google.maps.places.PlacePrediction => Boolean(prediction));
+
+        console.log("[useGooglePlacesAutocomplete] [2] Places API responded", {
           count: suggestions.length,
         });
 
@@ -76,9 +65,9 @@ export function useGooglePlacesAutocomplete({
 
         setPredictions(
           suggestions.map((prediction, index) => ({
-            key: `${prediction.description}-${index}`,
-            description: prediction.description,
-            placeId: prediction.place_id,
+            key: `${prediction.text.text}-${index}`,
+            description: prediction.text.text,
+            placeId: prediction.placeId,
           }))
         );
       } catch (error) {
