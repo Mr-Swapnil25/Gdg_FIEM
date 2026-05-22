@@ -25,7 +25,7 @@ const GEMINI_TIMEOUT_MS = 30_000;
 function timeout(ms: number): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => {
-      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
+      reject(new Error("Request Timed Out"));
     }, ms);
   });
 }
@@ -68,6 +68,7 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
+    console.log("[1] Starting generation flow...");
     const generated = await Promise.race([
       generateTripWithGemini(prompt, {
         placeName,
@@ -81,6 +82,7 @@ export async function generatePlanAction(
       }),
       timeout(GEMINI_TIMEOUT_MS),
     ]);
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,6 +174,7 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
       return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
@@ -181,8 +184,8 @@ export async function generatePlanAction(
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
   }
 }

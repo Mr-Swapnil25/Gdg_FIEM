@@ -30,23 +30,26 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
       setPlanState((state) => ({...state, weather: true}));
       return;
     }
-    fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-        placeName
-      )},IN&appid=${apiKey}&units=metric`
-    )
-      .then((response) => response.json())
-      .then((data) => {
+    async function fetchWeather() {
+      try {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
+            placeName!
+          )},IN&appid=${apiKey}&units=metric`
+        );
+        const data = await response.json();
         if (data) {
           setWeatherData(data);
         }
-      })
-      .catch((e) => {
-        console.error(e);
+      } catch (e: any) {
+        console.error("CRITICAL FETCH ERROR:", e.message, e.stack);
         setWeatherData(undefined);
-      })
-      .finally(() => setPlanState((state) => ({...state, weather: true})));
-  }, [placeName]);
+      } finally {
+        setPlanState((state) => ({...state, weather: true}));
+      }
+    }
+    fetchWeather();
+  }, [placeName, setPlanState]);
 
   return (
     <SectionWrapper id="weather">
