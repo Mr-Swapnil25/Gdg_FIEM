@@ -1,106 +1,284 @@
-<p align="center">
-  <img src="public/gemini-svg.png" width="200" alt="GemiTrek Logo" />
-  <br/>
-  <em>Plan Smarter. Travel Better. Powered by Google Gemini.</em>
-</p>
+[![Header](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=GemiTrek&fontSize=70&fontColor=fff&animation=twinkling&fontAlignY=35&desc=Plan%20Smarter.%20Travel%20Better.%20Powered%20by%20Google%20Gemini.&descAlignY=55&descSize=18)](https://github.com/Mr-Swapnil25/Gdg_FIEM)
 
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
-![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white)
-![Google Maps](https://img.shields.io/badge/Google_Maps-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white)
+<div align="center">
+  [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=4285F4&center=true&vCenter=true&width=600&lines=AI-Powered+Travel+Planning+%F0%9F%97%BA%EF%B8%8F;Built+for+GDG+FIEM+Hackathon+%F0%9F%9A%80;100%25+Google+Ecosystem+%E2%9C%A8;Plan+Smarter.+Travel+Better.)](https://git.io/typing-svg)
+</div>
 
-GemiTrek is a high-performance, AI-driven travel planning application that autonomously generates detailed, location-aware itineraries. By tightly integrating the Google Gemini 2.5 Flash API with Google Maps Places data, it constructs accurate daily schedules while mitigating hallucinatory routing errors. The platform also enables communal itinerary sharing, collaborative editing, and real-time expense tracking.
+<div align="center">
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white" alt="Google Gemini" />
+  <img src="https://img.shields.io/badge/Google_Maps-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white" alt="Google Maps" />
+  <img src="https://img.shields.io/badge/License-MIT-4CAF50?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/Made_with_❤️-love-red?style=for-the-badge" alt="Made with love" />
+</div>
 
-[**View Live Demo**](#)
+<br/>
 
-## Core Features
+<div align="center">
+  <a href="https://github.com/Mr-Swapnil25/Gdg_FIEM">
+    <img src="https://img.shields.io/badge/Live_Demo-View%20on%20Repo-00C853?style=for-the-badge" alt="Live Demo" />
+  </a>
+  <img src="https://img.shields.io/badge/GDG_FIEM-Hackathon-4285F4?style=for-the-badge" alt="GDG FIEM Hackathon" />
+</div>
 
-| Icon | Feature | Description |
-|---|---|---|
-| 🤖 | AI Itinerary Generation | Deterministic routing and destination insights generated via Gemini 2.5 Flash. |
-| 📍 | Geospatial Verification | Real-time map plotting and coordinate resolution using the Google Maps Places API. |
-| 👥 | Collaborative Planning | Invite companions to view or edit itineraries securely via Firebase Auth and Firestore. |
-| 🧮 | Expense Ledger | Built-in module for tracking category-based expenditures and managing trip budgets. |
-| 🌐 | Community Feed | A public catalog of optimized travel plans that users can browse and clone. |
+---
 
-## Tech Stack
+<br/>
 
-- **Next.js 14**: Chosen for hybridized App Router capabilities and protected server actions.
-- **TypeScript**: Enforces strict shapes over LLM-generated JSON to eliminate runtime parser crashes.
-- **Tailwind CSS**: Enables rapid, utility-first UI construction without CSS bloat.
-- **Firebase**: Native Firestore syncs multi-user edits instantly, while Firebase Auth locks down session states.
-- **Google Gemini 2.5 Flash**: Delivers rapid, structured JSON inference required for programmatic routing at scale.
-- **Google Maps Places API**: Intercepts AI-hallucinated coordinates and geocodes them into verified map markers.
+## 📚 Table of Contents
 
-## Local Setup
+- [About The Project](#about-the-project)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture Overview](#architecture-overview)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [API Keys Setup](#api-keys-setup)
+- [Why Google Ecosystem?](#why-google-ecosystem)
+- [Team](#team)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
 
-1. Clone the repository:
+<br/>
+
+---
+
+## 🔍 About The Project
+
+GemiTrek is an energetic AI-first travel planner. It turns simple trip prompts into day-by-day itineraries with verified map locations and expense tracking. Built for speed and reliability using the Google ecosystem, it reduces hallucinations and delivers production-ready JSON itineraries. Perfect for hackathons — fast results, real data, and India-first defaults.
+
+<br/>
+
+---
+
+## ✨ Features
+
+<table>
+  <thead>
+    <tr><th>Icon</th><th>Feature</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>🤖</td>
+      <td>AI Itinerary Generation</td>
+      <td>Gemini 2.0 Flash produces JSON itineraries with strict schema validation and a 30s timeout safety net.</td>
+    </tr>
+    <tr>
+      <td>📍</td>
+      <td>Interactive Mapping</td>
+      <td>Google Maps Places API plots locations and auto-corrects any AI-hallucinated coordinates via live geocoding.</td>
+    </tr>
+    <tr>
+      <td>💸</td>
+      <td>Expense Tracking</td>
+      <td>Automatic INR (₹) budget calculations with India-specific defaults and regional context.</td>
+    </tr>
+    <tr>
+      <td>🔒</td>
+      <td>Secure Authentication</td>
+      <td>Firebase Auth powers sign-in/sign-out and per-user Firestore data persistence.</td>
+    </tr>
+    <tr>
+      <td>🔎</td>
+      <td>Place Suggestions</td>
+      <td>Places Autocomplete with graceful fallback to text input for offline or limited-key scenarios.</td>
+    </tr>
+    <tr>
+      <td>💾</td>
+      <td>Trip Saving</td>
+      <td>Save full trip objects to Firestore for retrieval, sharing, and editing by the owner.</td>
+    </tr>
+    <tr>
+      <td>🇮🇳</td>
+      <td>India-First AI</td>
+      <td>All prompts bias INR, km, local cuisine and transport modes for accurate regional results.</td>
+    </tr>
+  </tbody>
+</table>
+
+<br/>
+
+---
+
+## 🧰 Tech Stack
+
+- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Radix UI / shadcn
+- **Backend:** Next.js Server Actions (secure server layer), Firebase v12 (Auth + Firestore + Storage)
+- **AI:** Google Gemini 2.0 Flash (@google/generative-ai)
+- **Maps:** Google Maps Places API (@react-google-maps/api)
+- **Utilities:** date-fns
+
+<br/>
+
+---
+
+## 🏗️ Architecture Overview
+
+```text
+Client (Next.js App Router)
+  ├─ UI components (Tailwind, shadcn)
+  ├─ Client hooks -> call Server Actions
+  └─ Google Maps Places JS (autocomplete + map)
+
+Server (Next.js Server Actions)
+  ├─ Validate incoming prompts
+  ├─ Call Gemini 2.0 Flash (structured JSON)
+  ├─ Geocode & verify coordinates via Google Maps Places API
+  └─ Persist trip objects to Firebase Firestore
+
+Storage & Auth
+  ├─ Firebase Auth: user sessions
+  └─ Firestore: trips, expenses, public plans
+
+AI Safety
+  ├─ Strict JSON schema + zod validation
+  ├─ 30s generation timeout
+  └─ Server-side geocoding to override hallucinated coords
+```
+
+<br/>
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+ (recommended)
+- npm or pnpm
+- Google Cloud project with Gemini and Maps enabled
+- Firebase project (Auth + Firestore + Storage)
+
+<br/>
+
+### Installation
+
+1. Clone the repo
+
    ```bash
-   git clone https://github.com/your-username/GemiTrek.git
-   cd GemiTrek
+   git clone https://github.com/Mr-Swapnil25/Gdg_FIEM.git
+   cd Gdg_FIEM
    ```
 
-2. Install dependencies:
+2. Install dependencies
+
    ```bash
    npm install
    ```
 
-3. Configure environment variables (Copy `.env.sample` to `.env.local` and add your keys):
+3. Create environment file
+
    ```bash
-   cp .env.sample .env.local
+   copy .env.example .env.local
    ```
 
-4. Instantiate the local development server:
+4. Add your API keys (see table below)
+
+5. Run locally
+
    ```bash
    npm run dev
    ```
 
-## Environment Variables
+<br/>
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_GEMINI_API_KEY` | Yes | API credential for Gemini 2.5 Flash models. |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Yes | Access key targeting Google Maps Places and JS SDK APIs. |
-| `NEXT_PUBLIC_GOOGLE_WEATHER_API_KEY` | Yes | Google Weather API key used by the weather section. |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Target Google Cloud project client API key. |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Associated Firebase Auth endpoint domain. |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Google Cloud Platform project identifier. |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | No | Cloud storage bucket string (if managing media). |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes | FCM configuration integer. |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | Unique Firebase client application UUID. |
+### Environment Variables
 
-## Project Structure
+<table>
+  <thead>
+    <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>NEXT_PUBLIC_GEMINI_API_KEY</td><td>Yes</td><td>API key for Google Gemini 2.0 Flash</td></tr>
+    <tr><td>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</td><td>Yes</td><td>API key for Google Maps JS & Places API</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_API_KEY</td><td>Yes</td><td>Firebase client API key</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</td><td>Yes</td><td>Firebase Auth domain</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_PROJECT_ID</td><td>Yes</td><td>Firebase project identifier</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</td><td>Yes</td><td>Firebase Storage bucket (for media)</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</td><td>Yes</td><td>Firebase messaging sender ID</td></tr>
+    <tr><td>NEXT_PUBLIC_FIREBASE_APP_ID</td><td>Yes</td><td>Firebase App ID</td></tr>
+  </tbody>
+</table>
+
+<br/>
+
+---
+
+## 📁 Project Structure
 
 ```text
-GemiTrek/
-├── app/                     # Next.js 14 App Router entry points
-│   ├── community-plans/     # Public itinerary discovery feed route
-│   ├── dashboard/           # User's private trips overview and analytics
-│   └── plans/               # Dynamic routes for collaboration and tracking
-├── components/              # Isolated React UI components and layouts
-│   ├── common/              # Global widgets (Authentication, Headers, Drawers)
-│   └── shared/              # Reusable complex UX elements
-├── lib/                     # Server-side business logic and integrations
-│   ├── actions/             # Next.js Server Actions handling secure mutations
-│   └── firebase/            # Firebase Admin logic and SDK bindings
-├── contexts/                # Top-level React Providers shaping global state
-└── hooks/                   # Custom Hooks extracting interface logic
+app/                 # Next.js App Router routes and pages
+components/          # Reusable UI components
+contexts/            # React context providers
+hooks/               # Custom hooks
+lib/                 # API wrappers, actions, utils
+public/              # Static assets (logo: public/gemini-svg.png)
+styles/              # Global styles (Tailwind + globals.css)
 ```
 
-## Screenshots
+<br/>
 
-![GemiTrek Dashboard Image Placeholder](https://via.placeholder.com/800x400.png?text=GemiTrek+Dashboard)
+---
 
-## GDG Hackathon Context
+## 🔐 API Keys Setup
 
-GemiTrek was architected to fully leverage the interconnected Google Cloud environment to eliminate the major friction points of multi-user travel planning. Travel apps that rely on disparate APIs face latency drops, schema breakages, and unverified data. 
+- Google Cloud (Gemini & Maps): https://console.cloud.google.com/ (enable Generative AI API and Maps SDKs)
+- Google Gemini docs & quota: https://developers.generativeai.google
+- Google Maps Places API: https://developers.google.com/maps/documentation/places/web-service/overview
+- Firebase console (Auth & Firestore): https://console.firebase.google.com/
 
-To solve this, we employed **Google Gemini 2.5 Flash** for its exceptional structured JSON generation capacity. Because raw LLMs often face "spatial hallucinations" (generating mathematically invalid routes), we coupled Gemini directly with the **Google Maps Places API** server-side, fetching real-time verification before the user ever sees the route. State management and identity provisioning were implemented via **Firebase Auth** and **Firestore** to sidestep conventional relational bottlenecks, allowing us to build instantaneous collaborative itinerary syncing (`/collaborate`) and multi-user live ledgers (`/expense-tracker`). Eliminating non-Google APIs allowed us to streamline configuration boundaries and achieve maximum application velocity tailored for the GDG ecosystem.
+Follow each provider's quickstart to create keys, restrict them to your domain and enable billing for Maps/Gemini.
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to test or restructure.
+<br/>
 
-## License
-[MIT](https://choosealicense.com/licenses/mit/)
+---
+
+## 🤝 Why Google Ecosystem?
+
+We migrated fully into Google. No stitching between providers. Gemini 2.0 Flash gives low-latency, structured JSON outputs perfect for programmatic itineraries. Firebase simplifies auth and real-time persistence. Google Maps protects against spatial hallucinations by verifying coordinates server-side. The result: a tight, fast, secure stack that ships hackathon-winning features fast — especially for India-first travel experiences.
+
+<br/>
+
+---
+
+## 👥 Team
+
+- [Mr-Swapnil25](https://github.com/Mr-Swapnil25) — Lead, AI & System Design
+- Team Member 2
+- Team Member 3
+
+<br/>
+
+---
+
+## 🤗 Contributing
+
+Love it? Send a PR. Open an issue for big changes. Keep fixes focused and tests green. Friendly, quick reviews.
+
+<br/>
+
+---
+
+## 📜 License
+
+MIT
+
+<br/>
+
+---
+
+## 🙏 Acknowledgements
+
+- GDG FIEM Hackathon
+- Google (Gemini, Maps, Firebase)
+- Next.js community
+
+<br/>
+
+[![Footer](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=120&section=footer)](https://github.com/Mr-Swapnil25/Gdg_FIEM)
+
+<div align="center">Made with ❤️ for GDG FIEM Hackathon</div>
