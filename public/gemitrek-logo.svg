@@ -8,7 +8,7 @@
     </linearGradient>
     <linearGradient id="gemitrek-glow" x1="68" y1="18" x2="232" y2="48" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="0.53" stop-color="#FFFFFF"/>
+      <stop offset="0.53" stop-color="#000000"/>
       <stop offset="0.54" stop-color="#A78BFA"/>
       <stop offset="1" stop-color="#C4B5FD"/>
     </linearGradient>
