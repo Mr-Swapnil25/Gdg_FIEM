@@ -22,6 +22,7 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
       setIsFetching(true);
       setPlan(undefined);
       setError(undefined);
+      console.log("[1] Starting generation flow... (fetch plan)");
 
       try {
         const fetchPromise = fetchTripById(planId, user?.uid, isPublic);
@@ -32,13 +33,16 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
         if (cancelled) return;
 
+        console.log("[2] API responded successfully! (fetch plan)");
+
         setPlan(trip);
         if (!trip) {
           setError("Plan not found or access denied.");
         }
-      } catch (err) {
+        console.log("[3] UI state updated. (fetch plan)");
+      } catch (err: any) {
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
+        console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {
