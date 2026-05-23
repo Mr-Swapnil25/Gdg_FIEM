@@ -2,11 +2,11 @@
   <title id="title">GemiTrek Logo</title>
   <desc id="desc">A gradient gem marker icon beside the GemiTrek wordmark.</desc>
   <defs>
-    <linearGradient id="gemitrek-mark" x1="8" y1="8" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+    <linearGradient id="gemitrek-mark" x1="6" y1="8" x2="48" y2="52" gradientUnits="userSpaceOnUse">
       <stop stop-color="#8B5CF6"/>
       <stop offset="1" stop-color="#2563EB"/>
     </linearGradient>
-    <linearGradient id="gemitrek-glow" x1="68" y1="18" x2="232" y2="48" gradientUnits="userSpaceOnUse">
+    <linearGradient id="gemitrek-glow" x1="16" y1="18" x2="232" y2="48" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>
       <stop offset="0.53" stop-color="#000000"/>
       <stop offset="0.54" stop-color="#A78BFA"/>
