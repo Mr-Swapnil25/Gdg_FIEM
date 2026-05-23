@@ -1,8 +1,5 @@
 [![Header](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=GemiTrek&fontSize=70&fontColor=fff&animation=twinkling&fontAlignY=35&desc=Plan%20Smarter.%20Travel%20Better.%20Powered%20by%20Google%20Gemini.&descAlignY=55&descSize=18)](https://github.com/Mr-Swapnil25/Gdg_FIEM)
 
-<div align="center">
-  [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=4285F4&center=true&vCenter=true&width=600&lines=AI-Powered+Travel+Planning+%F0%9F%97%BA%EF%B8%8F;Built+for+GDG+FIEM+Hackathon+%F0%9F%9A%80;100%25+Google+Ecosystem+%E2%9C%A8;Plan+Smarter.+Travel+Better.)](https://git.io/typing-svg)
-</div>
 
 <div align="center">
   <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
