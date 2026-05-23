@@ -114,8 +114,17 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingEmptyPlan(true);
+    console.log("[1] Starting generation flow... (Empty Plan)");
     try {
-      const planId = await generateEmptyPlanAction(values, userId);
+      const planIdPromise = generateEmptyPlanAction(values, userId);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+      });
+
+      const planId = await Promise.race([planIdPromise, timeoutPromise]);
+
+      console.log("[2] API responded successfully!");
+
       if (!planId) {
         toast({
           title: "Error",
@@ -126,12 +135,13 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       }
 
       closeModal(false);
+      console.log("[3] UI state updated.");
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while generating your plan.",
+        description: error?.message === "Request Timed Out" ? "Request Timed Out" : "An unexpected error occurred while generating your plan.",
         variant: "destructive",
       });
     } finally {
@@ -145,8 +155,17 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingAIPlan(true);
+    console.log("[1] Starting generation flow... (AI Plan)");
     try {
-      const result = await generatePlanAction(values, userId);
+      const resultPromise = generatePlanAction(values, userId);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+      });
+
+      const result = await Promise.race([resultPromise, timeoutPromise]) as GeneratePlanActionResult;
+
+      console.log("[2] Gemini API responded successfully!");
+
       if (!result.ok) {
         toast({
           title: "Failed to generate AI travel plan",
@@ -157,12 +176,13 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       }
 
       closeModal(false);
+      console.log("[3] UI state updated.");
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while generating your plan.",
+        description: error?.message === "Request Timed Out" ? "Request Timed Out" : "An unexpected error occurred while generating your plan.",
         variant: "destructive",
       });
     } finally {

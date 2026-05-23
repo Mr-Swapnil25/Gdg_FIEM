@@ -33,7 +33,7 @@ export function useGooglePlacesAutocomplete({
 
     void (async () => {
       try {
-        console.log("[useGooglePlacesAutocomplete] [1] Fetching suggestions", {
+        console.log("[1] Starting generation flow... (Google Places Fetching suggestions)", {
           input: trimmedInput,
           includedRegionCodes,
         });
@@ -48,33 +48,40 @@ export function useGooglePlacesAutocomplete({
           AutocompleteSuggestion: typeof google.maps.places.AutocompleteSuggestion;
         };
 
-        const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        const fetchPromise = AutocompleteSuggestion.fetchAutocompleteSuggestions({
           input: trimmedInput,
           includedRegionCodes,
         });
 
-        const suggestions = response.suggestions
-          .map((suggestion) => suggestion.placePrediction)
-          .filter((prediction): prediction is google.maps.places.PlacePrediction => Boolean(prediction));
+        const timeoutPromise = new Promise<any>((_, reject) => {
+          setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
 
-        console.log("[useGooglePlacesAutocomplete] [2] Places API responded", {
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+        const suggestions = response.suggestions
+          .map((suggestion: any) => suggestion.placePrediction)
+          .filter((prediction: any): prediction is google.maps.places.PlacePrediction => Boolean(prediction));
+
+        console.log("[2] API responded successfully! (Google Places API responded)", {
           count: suggestions.length,
         });
 
         if (cancelled) return;
 
         setPredictions(
-          suggestions.map((prediction, index) => ({
+          suggestions.map((prediction: any, index: number) => ({
             key: `${prediction.text.text}-${index}`,
             description: prediction.text.text,
             placeId: prediction.placeId,
           }))
         );
-      } catch (error) {
-        console.error("[useGooglePlacesAutocomplete] Fetch failed", error);
+        console.log("[3] UI state updated. (Google Places)");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           const fallback = getLocalPlaceSuggestions(trimmedInput);
-          console.log("[useGooglePlacesAutocomplete] [3] Local fallback suggestions", {
+          console.log("[3] UI state updated. (Google Places) Local fallback suggestions", {
             count: fallback.length,
           });
           setPredictions(fallback);
