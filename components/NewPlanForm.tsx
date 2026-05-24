@@ -114,21 +114,24 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingEmptyPlan(true);
+    console.log("[1] Starting empty plan generation flow...");
     try {
       const planId = await generateEmptyPlanAction(values, userId);
+      console.log("[2] Empty plan API responded successfully!");
       if (!planId) {
         toast({
           title: "Error",
           description: "Failed to generate empty plan.",
           variant: "destructive",
         });
-        return;
+        return; // Will hit finally block to set isLoading
       }
 
+      console.log("[3] UI state updated.");
       closeModal(false);
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
@@ -145,21 +148,24 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingAIPlan(true);
+    console.log("[1] Starting AI plan generation flow...");
     try {
       const result = await generatePlanAction(values, userId);
+      console.log("[2] AI plan generation API responded successfully!");
       if (!result.ok) {
         toast({
           title: "Failed to generate AI travel plan",
           description: resolvePlanError(result),
           variant: "destructive",
         });
-        return;
+        return; // Will hit finally block to set isLoading
       }
 
+      console.log("[3] UI state updated.");
       closeModal(false);
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
