@@ -25,7 +25,7 @@ const GEMINI_TIMEOUT_MS = 30_000;
 function timeout(ms: number): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => {
-      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
+      reject(new Error("Request Timed Out"));
     }, ms);
   });
 }
