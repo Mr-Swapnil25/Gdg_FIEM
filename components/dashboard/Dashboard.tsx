@@ -20,7 +20,29 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    console.log("[1] Starting Dashboard fetchUserTrips flow...");
+    let timerId: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+    });
+
+    Promise.race([
+      fetchUserTrips(user.uid),
+      timeoutPromise
+    ])
+    .then((fetchedPlans) => {
+      console.log("[2] Dashboard fetchUserTrips API responded successfully!");
+      setPlans(fetchedPlans as PlanDoc[]);
+      console.log("[3] UI state updated.");
+    })
+    .catch((error: any) => {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+      setPlans([]);
+    })
+    .finally(() => {
+      if (timerId) clearTimeout(timerId);
+    });
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();

@@ -155,14 +155,29 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
     };
 
     const loadWeather = async () => {
+      let timerId: NodeJS.Timeout | undefined;
       try {
-        const resolvedPlace = await resolveLocation();
+        console.log("[1] Starting weather fetch flow...");
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const resolvedPlace = await Promise.race([
+          resolveLocation(),
+          timeoutPromise
+        ]);
         const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
-          `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
-        );
+        const weatherResponse = await Promise.race([
+          fetch(
+            `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
+          ),
+          timeoutPromise
+        ]);
+
         const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
+        console.log("[2] Weather API responded successfully!");
 
         if (!weatherResponse.ok) {
           throw new Error("Google Weather API request failed.");
@@ -170,6 +185,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
 
         if (cancelled) return;
 
+        console.log("[3] UI state updated.");
         setWeatherData({
           placeName: resolvedPlace.formatted_address ?? placeName,
           iconUrl: weatherData.weatherCondition?.iconBaseUri
@@ -196,13 +212,14 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
-      } catch (error) {
-        console.error(error);
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
+        if (timerId) clearTimeout(timerId);
         if (!cancelled) {
           setPlanState((state) => ({...state, weather: true}));
         }
