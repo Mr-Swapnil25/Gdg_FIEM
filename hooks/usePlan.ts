@@ -36,9 +36,9 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         if (!trip) {
           setError("Plan not found or access denied.");
         }
-      } catch (err) {
+      } catch (err: any) {
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
+        console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {

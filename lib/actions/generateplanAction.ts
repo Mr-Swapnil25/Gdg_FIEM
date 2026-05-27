@@ -22,14 +22,6 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
-    }, ms);
-  });
-}
-
 function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
   if (error instanceof GeminiGenerationError) {
     return {
@@ -61,6 +53,8 @@ export async function generatePlanAction(
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
+  console.log("[1] Starting generation flow...");
+
   try {
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
@@ -68,8 +62,7 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
+    const generated = await generateTripWithGemini(prompt, {
         placeName,
         activityPreferences,
         companion,
@@ -78,9 +71,9 @@ export async function generatePlanAction(
         currency: "INR",
         distanceUnit: "km",
         region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    }, { timeoutMs: GEMINI_TIMEOUT_MS });
+
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,17 +165,19 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
+
       return {ok: true, planId};
-    } catch (saveError) {
-      console.error("Failed to save generated plan:", saveError);
+    } catch (saveError: any) {
+      console.error("CRITICAL FETCH ERROR:", saveError?.message, saveError?.stack);
       return {
         ok: false,
         errorCode: "PLAN_SAVE_FAILED",
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
   }
 }
