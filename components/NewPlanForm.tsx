@@ -127,8 +127,8 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
 
       closeModal(false);
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
@@ -158,8 +158,8 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
 
       closeModal(false);
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
