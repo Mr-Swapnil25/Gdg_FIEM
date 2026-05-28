@@ -62,16 +62,12 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
     return <SkeletonForTopPlacesToVisit isMaps />;
   }
 
-  if (googleMapsApi.isKeyMissing || googleMapsApi.loadError || googleMapsApi.isTimedOut) {
-    return (
-      <div className="flex h-full items-center justify-center rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-        Google Maps is unavailable. Enter destination manually.
-      </div>
-    );
+  if (googleMapsApi.loadError) {
+    return <div>Error loading maps: {googleMapsApi.loadError.message}</div>;
   }
 
   if (!googleMapsApi.isLoaded || isLoading) {
-    return <SkeletonForTopPlacesToVisit isMaps />;
+    return <div>Loading Maps...</div>;
   }
 
   return children;
