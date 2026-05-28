@@ -20,7 +20,26 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+    let isMounted = true;
+
+    async function loadTrips() {
+      try {
+        if (!user) return;
+        const trips = await fetchUserTrips(user.uid);
+        if (isMounted) setPlans(trips);
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        if (isMounted) setPlans([]);
+      } finally {
+        // Explicitly ensuring state updates stop (if any loading states existed here)
+      }
+    }
+
+    loadTrips();
+
+    return () => {
+      isMounted = false;
+    };
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
