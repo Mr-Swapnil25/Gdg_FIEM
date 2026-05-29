@@ -14,13 +14,53 @@ export default function Dashboard() {
   const {user, loading} = useAuthContext();
   const [plans, setPlans] = useState<PlanDoc[] | undefined>();
 
+  const [isFetchingPlans, setIsFetchingPlans] = useState(true);
+
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      setPlans([]);
-      return;
-    }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+    let isMounted = true;
+    let timerId: ReturnType<typeof setTimeout>;
+
+    const loadPlans = async () => {
+      if (loading) return;
+      if (!user) {
+        setPlans([]);
+        setIsFetchingPlans(false);
+        return;
+      }
+
+      console.log("[1] Starting generation flow... Fetching user trips...");
+      setIsFetchingPlans(true);
+      try {
+        const fetchPromise = fetchUserTrips(user.uid);
+        const timeoutPromise = new Promise<PlanDoc[]>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const data = await Promise.race([fetchPromise, timeoutPromise]);
+        console.log("[2] API responded successfully! User trips fetched.");
+        if (isMounted) {
+          setPlans(data);
+          console.log("[3] UI state updated.");
+        }
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        if (isMounted) {
+          setPlans([]);
+        }
+      } finally {
+        clearTimeout(timerId);
+        if (isMounted) {
+          setIsFetchingPlans(false);
+        }
+      }
+    };
+
+    loadPlans();
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
@@ -76,7 +116,7 @@ export default function Dashboard() {
           style={{ flex: "1 1 auto" }}
         >
           {!finalPlans || finalPlans.length === 0 ? (
-            <NoPlans isLoading={!plans} />
+            <NoPlans isLoading={isFetchingPlans || loading} />
           ) : (
             <div
               className="grid grid-cols-1 

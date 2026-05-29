@@ -19,6 +19,7 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
     async function load() {
       if (authLoading) return;
 
+      console.log("[1] Starting generation flow... Fetching trip by ID:", planId);
       setIsFetching(true);
       setPlan(undefined);
       setError(undefined);
@@ -26,25 +27,29 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
       try {
         const fetchPromise = fetchTripById(planId, user?.uid, isPublic);
         const timeoutPromise = new Promise<null>((_, reject) => {
-          timer = setTimeout(() => reject(new Error("fetchTripById timed out")), PLAN_FETCH_TIMEOUT_MS);
+          timer = setTimeout(() => reject(new Error("Request Timed Out")), PLAN_FETCH_TIMEOUT_MS);
         });
 
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
         if (cancelled) return;
 
+        console.log("[2] API responded successfully! Trip fetched.");
         setPlan(trip);
+        console.log("[3] UI state updated.");
+
         if (!trip) {
           setError("Plan not found or access denied.");
         }
-      } catch (err) {
+      } catch (err: any) {
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
+        console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
-        setIsFetching(false);
+        if (!cancelled) {
+          setIsFetching(false);
+        }
       }
     }
 
