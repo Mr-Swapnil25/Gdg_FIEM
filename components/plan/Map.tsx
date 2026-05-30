@@ -1,21 +1,30 @@
 "use client";
 import {Doc} from "@/lib/types/firestore";
 import {colors, MAPS_DARK_MODE_STYLES} from "@/lib/constants";
-import {GoogleMap, OverlayView} from "@react-google-maps/api";
+import {GoogleMap, OverlayView, useJsApiLoader, Libraries} from "@react-google-maps/api";
 import {MapPin} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useEffect, useState} from "react";
+import {ENV_CONFIG} from "@/lib/env-config";
 
 type MapProps = {
   topPlacesToVisit: (NonNullable<Doc<"plan">["topplacestovisit"]>[number] & {id: string})[] | undefined;
   selectedPlace: {lat: number; lng: number} | undefined;
 };
 
+const GOOGLE_MAPS_LIBRARIES: Libraries = ["places"];
+
 export default function Map({topPlacesToVisit, selectedPlace}: MapProps) {
   const [mapCenter, setMapCenter] = useState(selectedPlace);
   const [mapZoom, setMapZoom] = useState(13);
 
   const {resolvedTheme} = useTheme();
+
+  const {isLoaded, loadError} = useJsApiLoader({
+    id: "google-maps-script",
+    googleMapsApiKey: ENV_CONFIG.GOOGLE_MAPS_API_KEY ?? "",
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
 
   useEffect(() => {
     if (!selectedPlace) return;
@@ -26,6 +35,14 @@ export default function Map({topPlacesToVisit, selectedPlace}: MapProps) {
     setMapCenter({lat, lng});
     setMapZoom(16);
   };
+
+  if (loadError) {
+    return <div>Error loading maps: {loadError.message}</div>;
+  }
+
+  if (!isLoaded) {
+    return <div>Loading Maps...</div>;
+  }
 
   return topPlacesToVisit && topPlacesToVisit?.length > 0 ? (
     <GoogleMap
