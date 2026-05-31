@@ -155,18 +155,32 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
     };
 
     const loadWeather = async () => {
+      console.log("[1] Starting generation flow...");
+      let timerId: ReturnType<typeof setTimeout> | null = null;
       try {
-        const resolvedPlace = await resolveLocation();
+        const resolveLocationPromise = resolveLocation();
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error("Request Timed Out"));
+          }, 30000);
+        });
+
+        const resolvedPlace = await Promise.race([resolveLocationPromise, timeoutPromise]);
         const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
+        const weatherFetchPromise = fetch(
           `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
-        );
-        const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
+        ).then(async (res) => {
+          if (!res.ok) throw new Error("Google Weather API request failed.");
+          return res.json();
+        });
 
-        if (!weatherResponse.ok) {
-          throw new Error("Google Weather API request failed.");
-        }
+        const weatherData = (await Promise.race([
+          weatherFetchPromise,
+          timeoutPromise,
+        ])) as GoogleWeatherResponse;
+
+        console.log("[2] API responded successfully!");
 
         if (cancelled) return;
 
@@ -196,13 +210,16 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
-      } catch (error) {
-        console.error(error);
+
+        console.log("[3] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
+        if (timerId) clearTimeout(timerId);
         if (!cancelled) {
           setPlanState((state) => ({...state, weather: true}));
         }
