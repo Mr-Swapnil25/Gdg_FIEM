@@ -116,13 +116,28 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
+  console.log("[1] Starting generation flow...");
+  let timerId: ReturnType<typeof setTimeout> | null = null;
   try {
-    return await Promise.race([
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => {
+        reject(new Error("Request Timed Out"));
+      }, options?.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    });
+
+    const result = await Promise.race([
       geminiCall(prompt, preferences, options),
-      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      timeoutPromise,
     ]);
-  } catch (error) {
+
+    console.log("[2] API responded successfully!");
+
+    return result;
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     throw normalizeGeminiError(error);
+  } finally {
+    if (timerId) clearTimeout(timerId);
   }
 }
 

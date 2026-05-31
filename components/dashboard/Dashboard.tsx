@@ -20,7 +20,50 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    let isCancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const loadPlans = async () => {
+      console.log("[1] Starting generation flow...");
+      try {
+        const fetchPromise = fetchUserTrips(user.uid);
+        const timeoutPromise = new Promise<PlanDoc[]>((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error("Request Timed Out"));
+          }, 30000);
+        });
+
+        const fetchedPlans = await Promise.race([fetchPromise, timeoutPromise]);
+
+        console.log("[2] API responded successfully!");
+
+        if (!isCancelled) {
+          setPlans(fetchedPlans);
+          console.log("[3] UI state updated.");
+        }
+      } catch (error: any) {
+        if (!isCancelled) {
+          console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+          setPlans([]);
+        }
+      } finally {
+        if (timerId) {
+          clearTimeout(timerId);
+        }
+        // In Dashboard, plans state holds undefined when it is loading
+        // Setting it to fetchedPlans or [] resolves the "loading" state
+      }
+    };
+
+    loadPlans();
+
+    return () => {
+      isCancelled = true;
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();

@@ -68,19 +68,18 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
-        placeName,
-        activityPreferences,
-        companion,
-        fromDate: datesOfTravel.from.toISOString(),
-        toDate: datesOfTravel.to.toISOString(),
-        currency: "INR",
-        distanceUnit: "km",
-        region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    const generated = await generateTripWithGemini(prompt, {
+      placeName,
+      activityPreferences,
+      companion,
+      fromDate: datesOfTravel.from.toISOString(),
+      toDate: datesOfTravel.to.toISOString(),
+      currency: "INR",
+      distanceUnit: "km",
+      region: "IN",
+    }, { timeoutMs: GEMINI_TIMEOUT_MS });
+
+    console.log("[3] UI state updated.");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -181,8 +180,8 @@ export async function generatePlanAction(
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
   }
 }
