@@ -20,7 +20,11 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+    fetchUserTrips(user.uid).then(setPlans).catch((error) => {
+      const err = error as Error;
+      console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
+      setPlans([]);
+    });
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
