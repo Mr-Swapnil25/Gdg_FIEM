@@ -197,7 +197,8 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
       } catch (error) {
-        console.error(error);
+        const err = error as Error;
+        console.error("CRITICAL FETCH ERROR:", err?.message, err?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
