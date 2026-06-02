@@ -145,8 +145,10 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingAIPlan(true);
+    console.log("[1] Starting generation flow...");
     try {
       const result = await generatePlanAction(values, userId);
+      console.log("[2] Gemini API responded successfully!");
       if (!result.ok) {
         toast({
           title: "Failed to generate AI travel plan",
@@ -158,8 +160,9 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
 
       closeModal(false);
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
+      console.log("[3] UI state updated.");
     } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+      console.error("CRITICAL FETCH ERROR:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : undefined);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
