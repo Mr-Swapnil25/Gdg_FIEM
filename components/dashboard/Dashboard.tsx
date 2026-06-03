@@ -20,7 +20,22 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    const loadPlans = async () => {
+      try {
+        console.log("[1] Starting generation flow...");
+        const result = await fetchUserTrips(user.uid);
+        console.log("[2] API responded successfully!");
+        setPlans(result);
+        console.log("[3] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+      } finally {
+        setPlans((prev) => prev ?? []);
+      }
+    };
+
+    loadPlans();
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
