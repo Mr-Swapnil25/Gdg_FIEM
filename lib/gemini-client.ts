@@ -49,16 +49,6 @@ async function getClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(
-        new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`)
-      );
-    }, ms);
-  });
-}
-
 function normalizeGeminiError(error: unknown) {
   if (error instanceof GeminiGenerationError) return error;
   return new GeminiGenerationError(
@@ -83,8 +73,10 @@ async function geminiCall(
   });
 
   const fullPrompt = buildPrompt(prompt, preferences);
+  console.log("[Gemini] Requesting content generation from Gemini API...");
   const result = await model.generateContent(fullPrompt);
   const rawText = result.response.text().trim();
+  console.log("[Gemini] Received content generation from Gemini API.");
 
   let parsed: unknown;
   try {
@@ -116,13 +108,25 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
+  let timerId: NodeJS.Timeout | undefined;
   try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => {
+        reject(
+          new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${options?.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms.`)
+        );
+      }, options?.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    });
+
     return await Promise.race([
       geminiCall(prompt, preferences, options),
-      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      timeoutPromise,
     ]);
-  } catch (error) {
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     throw normalizeGeminiError(error);
+  } finally {
+    if (timerId) clearTimeout(timerId);
   }
 }
 
