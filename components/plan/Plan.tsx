@@ -90,10 +90,10 @@ const Plan = ({ planId }: PlanProps) => {
         userPrompt={plan?.userPrompt}
         placeName={plan?.nameoftheplace}
         imageUrl={plan?.imageUrl}
-        isLoading={isLoading || !plan?.contentGenerationState.imagination}
+        isLoading={isLoading || (plan?.contentGenerationState?.imagination === false)}
       />
       <AboutThePlace
-        isLoading={isLoading || !plan?.contentGenerationState.abouttheplace}
+        isLoading={isLoading || (plan?.contentGenerationState?.abouttheplace === false)}
         planId={planId}
         content={plan?.abouttheplace}
         allowEdit={true}
@@ -103,40 +103,40 @@ const Plan = ({ planId }: PlanProps) => {
         activities={plan?.adventuresactivitiestodo}
         planId={planId}
         isLoading={
-          isLoading || !plan?.contentGenerationState.adventuresactivitiestodo
+          isLoading || (plan?.contentGenerationState?.adventuresactivitiestodo === false)
         }
         allowEdit={true}
       />
       <TopPlacesToVisit
         topPlacesToVisit={plan?.topplacestovisit}
         planId={planId}
-        isLoading={isLoading || !plan?.contentGenerationState.topplacestovisit}
+        isLoading={isLoading || (plan?.contentGenerationState?.topplacestovisit === false)}
         allowEdit={true}
       />
       <Itinerary
         itinerary={plan?.itinerary}
         planId={planId}
-        isLoading={isLoading || !plan?.contentGenerationState.itinerary}
+        isLoading={isLoading || (plan?.contentGenerationState?.itinerary === false)}
         allowEdit={true}
       />
       <LocalCuisineRecommendations
         recommendations={plan?.localcuisinerecommendations}
         isLoading={
-          isLoading || !plan?.contentGenerationState.localcuisinerecommendations
+          isLoading || (plan?.contentGenerationState?.localcuisinerecommendations === false)
         }
         planId={planId}
         allowEdit={true}
       />
       <PackingChecklist
         checklist={plan?.packingchecklist}
-        isLoading={isLoading || !plan?.contentGenerationState.packingchecklist}
+        isLoading={isLoading || (plan?.contentGenerationState?.packingchecklist === false)}
         planId={planId}
         allowEdit={true}
       />
       <BestTimeToVisit
         content={plan?.besttimetovisit}
         planId={planId}
-        isLoading={isLoading || !plan?.contentGenerationState.besttimetovisit}
+        isLoading={isLoading || (plan?.contentGenerationState?.besttimetovisit === false)}
         allowEdit={true}
       />
     </section>
