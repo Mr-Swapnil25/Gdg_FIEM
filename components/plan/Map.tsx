@@ -5,6 +5,8 @@ import {GoogleMap, OverlayView} from "@react-google-maps/api";
 import {MapPin} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useEffect, useState} from "react";
+import {useGoogleMapsApi} from "@/contexts/MapProvider";
+import {SkeletonForTopPlacesToVisit} from "@/components/sections/TopPlacesToVisit";
 
 type MapProps = {
   topPlacesToVisit: (NonNullable<Doc<"plan">["topplacestovisit"]>[number] & {id: string})[] | undefined;
@@ -16,6 +18,7 @@ export default function Map({topPlacesToVisit, selectedPlace}: MapProps) {
   const [mapZoom, setMapZoom] = useState(13);
 
   const {resolvedTheme} = useTheme();
+  const googleMapsApi = useGoogleMapsApi();
 
   useEffect(() => {
     if (!selectedPlace) return;
@@ -26,6 +29,14 @@ export default function Map({topPlacesToVisit, selectedPlace}: MapProps) {
     setMapCenter({lat, lng});
     setMapZoom(16);
   };
+
+  if (googleMapsApi?.loadError) {
+    return <div>Error loading maps: {googleMapsApi.loadError.message}</div>;
+  }
+
+  if (!googleMapsApi?.isLoaded) {
+    return <div>Loading Maps...</div>;
+  }
 
   return topPlacesToVisit && topPlacesToVisit?.length > 0 ? (
     <GoogleMap

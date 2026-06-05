@@ -20,7 +20,47 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const fetchPlans = async () => {
+      try {
+        console.log("[1] Starting Dashboard fetchUserTrips flow...");
+        const fetchPromise = fetchUserTrips(user.uid);
+        const timeoutPromise = new Promise<PlanDoc[]>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error("Request Timed Out"));
+          }, 30000);
+        });
+
+        const fetchedPlans = await Promise.race([fetchPromise, timeoutPromise]);
+
+        console.log("[2] Dashboard API responded successfully!");
+        if (isMounted) {
+          setPlans(fetchedPlans);
+          console.log("[3] Dashboard UI state updated.");
+        }
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        if (isMounted) {
+          setPlans([]);
+        }
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
+    };
+
+    fetchPlans();
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
