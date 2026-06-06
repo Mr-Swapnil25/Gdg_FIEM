@@ -22,12 +22,14 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
+function timeout(ms: number): { promise: Promise<never>; clearTimeoutId: () => void } {
+  let timerId: NodeJS.Timeout;
+  const promise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => {
       reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
     }, ms);
   });
+  return { promise, clearTimeoutId: () => clearTimeout(timerId) };
 }
 
 function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
@@ -68,19 +70,30 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
-        placeName,
-        activityPreferences,
-        companion,
-        fromDate: datesOfTravel.from.toISOString(),
-        toDate: datesOfTravel.to.toISOString(),
-        currency: "INR",
-        distanceUnit: "km",
-        region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    console.log("[1] Starting generation flow...");
+
+    const { promise: timeoutPromise, clearTimeoutId } = timeout(GEMINI_TIMEOUT_MS);
+    let generated;
+
+    try {
+      generated = await Promise.race([
+        generateTripWithGemini(prompt, {
+          placeName,
+          activityPreferences,
+          companion,
+          fromDate: datesOfTravel.from.toISOString(),
+          toDate: datesOfTravel.to.toISOString(),
+          currency: "INR",
+          distanceUnit: "km",
+          region: "IN",
+        }),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeoutId();
+    }
+
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,6 +185,8 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
+
       return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
@@ -181,8 +196,8 @@ export async function generatePlanAction(
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
   }
 }
