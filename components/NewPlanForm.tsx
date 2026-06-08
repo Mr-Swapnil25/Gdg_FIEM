@@ -113,8 +113,10 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       return;
     }
 
+    console.log("[1] Starting UI flow for Empty Plan...");
     setIsLoadingEmptyPlan(true);
     try {
+      console.log("[2] Calling generateEmptyPlanAction...");
       const planId = await generateEmptyPlanAction(values, userId);
       if (!planId) {
         toast({
@@ -125,16 +127,18 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[3] Empty Plan generated successfully, navigating...");
       closeModal(false);
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
         variant: "destructive",
       });
     } finally {
+      console.log("[4] Empty Plan UI flow complete, resetting loading state.");
       setIsLoadingEmptyPlan(false);
     }
   }
@@ -144,10 +148,13 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       return;
     }
 
+    console.log("[1] Starting UI flow for AI Plan...");
     setIsLoadingAIPlan(true);
     try {
+      console.log("[2] Calling generatePlanAction...");
       const result = await generatePlanAction(values, userId);
       if (!result.ok) {
+        console.error("AI Plan generation failed with result:", result);
         toast({
           title: "Failed to generate AI travel plan",
           description: resolvePlanError(result),
@@ -156,16 +163,18 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[3] AI Plan generated successfully, navigating...");
       closeModal(false);
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
         variant: "destructive",
       });
     } finally {
+      console.log("[4] AI Plan UI flow complete, resetting loading state.");
       setIsLoadingAIPlan(false);
     }
   }

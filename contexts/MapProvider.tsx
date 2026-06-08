@@ -63,16 +63,25 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
   }
 
   if (googleMapsApi.isKeyMissing || googleMapsApi.loadError || googleMapsApi.isTimedOut) {
+    const errorMessage = googleMapsApi.loadError
+      ? `Error loading maps: ${googleMapsApi.loadError.message}`
+      : "Google Maps is unavailable. Enter destination manually.";
+
     return (
       <div className="flex h-full items-center justify-center rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-        Google Maps is unavailable. Enter destination manually.
+        {errorMessage}
       </div>
     );
   }
 
   if (!googleMapsApi.isLoaded || isLoading) {
-    return <SkeletonForTopPlacesToVisit isMaps />;
+    return (
+      <div className="flex h-full items-center justify-center">
+         <div>Loading Maps...</div>
+         <SkeletonForTopPlacesToVisit isMaps />
+      </div>
+    );
   }
 
-  return children;
+  return <>{children}</>;
 }

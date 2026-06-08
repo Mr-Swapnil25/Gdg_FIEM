@@ -58,6 +58,7 @@ export async function generatePlanAction(
   formData: formSchemaType,
   userId: string
 ): Promise<GeneratePlanActionResult> {
+  console.log("[1] Starting generation flow...");
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
@@ -68,6 +69,7 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
+    console.log("[2] Initiating Gemini API request...");
     const generated = await Promise.race([
       generateTripWithGemini(prompt, {
         placeName,
@@ -81,6 +83,7 @@ export async function generatePlanAction(
       }),
       timeout(GEMINI_TIMEOUT_MS),
     ]);
+    console.log("[3] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -139,6 +142,7 @@ export async function generatePlanAction(
     }
 
     try {
+      console.log("[4] Saving generated plan to Firestore...");
       const planId = await saveTripToFirestore(userId, {
         nameoftheplace: placeName,
         userPrompt: prompt,
@@ -171,18 +175,21 @@ export async function generatePlanAction(
           besttimetovisit: true,
         },
       });
+      console.log("[5] Successfully saved generated plan to Firestore.");
 
       return {ok: true, planId};
-    } catch (saveError) {
-      console.error("Failed to save generated plan:", saveError);
+    } catch (saveError: any) {
+      console.error("CRITICAL FETCH ERROR:", saveError?.message, saveError?.stack);
       return {
         ok: false,
         errorCode: "PLAN_SAVE_FAILED",
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
+  } finally {
+    console.log("[6] Generation flow complete.");
   }
 }
