@@ -145,8 +145,10 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
     }
 
     setIsLoadingAIPlan(true);
+    console.log("[1] Submitting AI Plan...");
     try {
       const result = await generatePlanAction(values, userId);
+      console.log("[2] AI Plan generation responded!");
       if (!result.ok) {
         toast({
           title: "Failed to generate AI travel plan",
