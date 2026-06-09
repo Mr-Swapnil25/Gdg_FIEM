@@ -14,14 +14,56 @@ export default function Dashboard() {
   const {user, loading} = useAuthContext();
   const [plans, setPlans] = useState<PlanDoc[] | undefined>();
 
+
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+
   useEffect(() => {
     if (loading) return;
     if (!user) {
       setPlans([]);
+      setIsLoadingPlans(false);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    let isMounted = true;
+    let timerId: NodeJS.Timeout | undefined;
+
+    async function loadTrips() {
+      setIsLoadingPlans(true);
+      console.log("[1] Starting fetchUserTrips...");
+      try {
+        const fetchPromise = fetchUserTrips(user!.uid);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const fetchedPlans = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (isMounted) {
+          console.log("[2] fetchUserTrips responded successfully!");
+          setPlans(fetchedPlans as PlanDoc[]);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error("CRITICAL FETCH ERROR:", (error as Error)?.message, (error as Error)?.stack);
+          setPlans([]);
+        }
+      } finally {
+        if (timerId) clearTimeout(timerId);
+        if (isMounted) {
+          setIsLoadingPlans(false);
+        }
+      }
+    }
+
+    loadTrips();
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
   }, [loading, user]);
+
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
   const finalPlans = filteredPlans ?? plans;
@@ -76,7 +118,7 @@ export default function Dashboard() {
           style={{ flex: "1 1 auto" }}
         >
           {!finalPlans || finalPlans.length === 0 ? (
-            <NoPlans isLoading={!plans} />
+            <NoPlans isLoading={isLoadingPlans} />
           ) : (
             <div
               className="grid grid-cols-1 

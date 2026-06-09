@@ -1,7 +1,8 @@
 "use client";
 import {Doc} from "@/lib/types/firestore";
 import {colors, MAPS_DARK_MODE_STYLES} from "@/lib/constants";
-import {GoogleMap, OverlayView} from "@react-google-maps/api";
+import {GoogleMap, OverlayView, useJsApiLoader} from "@react-google-maps/api";
+import { useGoogleMapsApi } from "@/contexts/MapProvider";
 import {MapPin} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useEffect, useState} from "react";
@@ -16,6 +17,10 @@ export default function Map({topPlacesToVisit, selectedPlace}: MapProps) {
   const [mapZoom, setMapZoom] = useState(13);
 
   const {resolvedTheme} = useTheme();
+
+  const googleMapsApi = useGoogleMapsApi();
+  if (googleMapsApi?.loadError) return <div>Error loading maps: {googleMapsApi.loadError.message}</div>;
+  if (!googleMapsApi?.isLoaded) return <div>Loading Maps...</div>;
 
   useEffect(() => {
     if (!selectedPlace) return;
