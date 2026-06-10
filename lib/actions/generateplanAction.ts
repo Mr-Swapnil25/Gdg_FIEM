@@ -68,6 +68,7 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
+    console.log("[1] Starting generation flow...");
     const generated = await Promise.race([
       generateTripWithGemini(prompt, {
         placeName,
@@ -81,6 +82,7 @@ export async function generatePlanAction(
       }),
       timeout(GEMINI_TIMEOUT_MS),
     ]);
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,9 +174,10 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
       return {ok: true, planId};
     } catch (saveError) {
-      console.error("Failed to save generated plan:", saveError);
+      console.error("CRITICAL FETCH ERROR:", saveError instanceof Error ? saveError.message : "Unknown error", saveError instanceof Error ? saveError.stack : "");
       return {
         ok: false,
         errorCode: "PLAN_SAVE_FAILED",
@@ -182,7 +185,7 @@ export async function generatePlanAction(
       };
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
     return toErrorResult(error);
   }
 }
