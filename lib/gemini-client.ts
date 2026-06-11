@@ -49,14 +49,16 @@ async function getClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
+function timeout(ms: number): { promise: Promise<never>; timerId: ReturnType<typeof setTimeout> } {
+  let timerId: ReturnType<typeof setTimeout>;
+  const promise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => {
       reject(
         new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`)
       );
     }, ms);
   });
+  return { promise, timerId: timerId! };
 }
 
 function normalizeGeminiError(error: unknown) {
@@ -117,10 +119,15 @@ export async function generateTripWithGemini(
   options?: GenerateOptions
 ): Promise<TripItinerary> {
   try {
-    return await Promise.race([
-      geminiCall(prompt, preferences, options),
-      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
-    ]);
+    const { promise: timeoutPromise, timerId } = timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    try {
+      return await Promise.race([
+        geminiCall(prompt, preferences, options),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timerId);
+    }
   } catch (error) {
     throw normalizeGeminiError(error);
   }

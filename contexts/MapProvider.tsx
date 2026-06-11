@@ -48,6 +48,9 @@ export function GoogleMapsApiProvider({children}: {children: ReactNode}) {
     [isLoaded, loadError, isKeyMissing, isTimedOut]
   );
 
+  if (loadError) return <div>Error loading maps: {loadError.message}</div>;
+  if (!isLoaded) return <div>Loading Maps...</div>;
+
   return <GoogleMapsApiContext.Provider value={value}>{children}</GoogleMapsApiContext.Provider>;
 }
 

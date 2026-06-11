@@ -22,12 +22,14 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
+function timeout(ms: number): { promise: Promise<never>; timerId: ReturnType<typeof setTimeout> } {
+  let timerId: ReturnType<typeof setTimeout>;
+  const promise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => {
       reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
     }, ms);
   });
+  return { promise, timerId: timerId! };
 }
 
 function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
@@ -68,19 +70,26 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
-        placeName,
-        activityPreferences,
-        companion,
-        fromDate: datesOfTravel.from.toISOString(),
-        toDate: datesOfTravel.to.toISOString(),
-        currency: "INR",
-        distanceUnit: "km",
-        region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    const { promise: timeoutPromise, timerId } = timeout(GEMINI_TIMEOUT_MS);
+    let generated;
+
+    try {
+      generated = await Promise.race([
+        generateTripWithGemini(prompt, {
+          placeName,
+          activityPreferences,
+          companion,
+          fromDate: datesOfTravel.from.toISOString(),
+          toDate: datesOfTravel.to.toISOString(),
+          currency: "INR",
+          distanceUnit: "km",
+          region: "IN",
+        }),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timerId);
+    }
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
