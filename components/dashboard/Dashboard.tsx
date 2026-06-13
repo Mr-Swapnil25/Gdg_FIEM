@@ -13,14 +13,48 @@ export default function Dashboard() {
   const [searchPlanText, setSearchPlanText] = useState("");
   const {user, loading} = useAuthContext();
   const [plans, setPlans] = useState<PlanDoc[] | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      setPlans([]);
-      return;
-    }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+    let timerId: NodeJS.Timeout | undefined;
+
+    const loadData = async () => {
+      if (loading) return;
+      if (!user) {
+        setPlans([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      console.log("[1] Starting fetchUserTrips flow...");
+
+      try {
+        const fetchPromise = fetchUserTrips(user.uid);
+        const timeoutPromise = new Promise<PlanDoc[]>((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error("Request Timed Out"));
+          }, 30000);
+        });
+
+        const data = await Promise.race([fetchPromise, timeoutPromise]);
+        console.log("[2] fetchUserTrips API responded successfully!");
+        setPlans(data);
+        console.log("[3] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        setPlans([]);
+      } finally {
+        if (timerId) clearTimeout(timerId);
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
@@ -76,7 +110,7 @@ export default function Dashboard() {
           style={{ flex: "1 1 auto" }}
         >
           {!finalPlans || finalPlans.length === 0 ? (
-            <NoPlans isLoading={!plans} />
+            <NoPlans isLoading={isLoading} />
           ) : (
             <div
               className="grid grid-cols-1 
