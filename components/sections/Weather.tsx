@@ -154,19 +154,33 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
       throw new Error(`Could not resolve coordinates for ${placeName}.`);
     };
 
+    let timerId: NodeJS.Timeout | undefined;
+
     const loadWeather = async () => {
       try {
-        const resolvedPlace = await resolveLocation();
-        const {lat, lng} = resolvedPlace.geometry.location;
+        console.log("[1] Starting weather lookup flow...");
+        const fetchWeatherPromise = (async () => {
+          const resolvedPlace = await resolveLocation();
+          const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
-          `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
-        );
-        const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
+          const weatherResponse = await fetch(
+            `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
+          );
+          if (!weatherResponse.ok) {
+            throw new Error("Google Weather API request failed.");
+          }
+          return {
+            weatherData: (await weatherResponse.json()) as GoogleWeatherResponse,
+            resolvedPlace
+          };
+        })();
 
-        if (!weatherResponse.ok) {
-          throw new Error("Google Weather API request failed.");
-        }
+        const timeoutPromise = new Promise<{weatherData: GoogleWeatherResponse, resolvedPlace: any}>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const { weatherData, resolvedPlace } = await Promise.race([fetchWeatherPromise, timeoutPromise]);
+        console.log("[2] Weather API responded successfully!");
 
         if (cancelled) return;
 
@@ -196,13 +210,15 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
-      } catch (error) {
-        console.error(error);
+        console.log("[3] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
+        if (timerId) clearTimeout(timerId);
         if (!cancelled) {
           setPlanState((state) => ({...state, weather: true}));
         }
@@ -213,6 +229,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
 
     return () => {
       cancelled = true;
+      if (timerId) clearTimeout(timerId);
     };
   }, [placeName, setPlanState]);
 
