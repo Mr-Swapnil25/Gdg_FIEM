@@ -49,13 +49,16 @@ async function getClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-function timeout(ms: number): Promise<never> {
+function timeout(ms: number, signal?: { timerId?: NodeJS.Timeout }): Promise<never> {
   return new Promise((_, reject) => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       reject(
-        new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`)
+        new GeminiGenerationError("GEMINI_TIMEOUT", `Request Timed Out`)
       );
     }, ms);
+    if (signal) {
+      signal.timerId = id;
+    }
   });
 }
 
@@ -73,20 +76,25 @@ async function geminiCall(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ) {
-  const client = await getClient();
-  const model = client.getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: {
-      responseMimeType: "application/json",
-      temperature: options?.temperature ?? 0.2,
-    },
-  });
+  try {
+    console.log("[1] Starting generation flow (Gemini Call)...");
 
-  const fullPrompt = buildPrompt(prompt, preferences);
-  const result = await model.generateContent(fullPrompt);
-  const rawText = result.response.text().trim();
+    const client = await getClient();
+    const model = client.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: options?.temperature ?? 0.2,
+      },
+    });
 
-  let parsed: unknown;
+    const fullPrompt = buildPrompt(prompt, preferences);
+    const result = await model.generateContent(fullPrompt);
+    const rawText = result.response.text().trim();
+
+    console.log("[2] Gemini API responded successfully!");
+
+    let parsed: unknown;
   try {
     parsed = JSON.parse(rawText);
   } catch (parseError) {
@@ -98,17 +106,22 @@ async function geminiCall(
     );
   }
 
-  try {
-    assertTripItinerary(parsed);
-  } catch (shapeError) {
-    throw new GeminiGenerationError(
-      "GEMINI_INVALID_RESPONSE",
-      "Gemini response is missing required itinerary fields.",
-      {cause: shapeError, rawResponse: rawText}
-    );
-  }
+    try {
+      assertTripItinerary(parsed);
+    } catch (shapeError) {
+      throw new GeminiGenerationError(
+        "GEMINI_INVALID_RESPONSE",
+        "Gemini response is missing required itinerary fields.",
+        {cause: shapeError, rawResponse: rawText}
+      );
+    }
 
-  return parsed;
+    console.log("[3] UI state (parsed object) updated.");
+    return parsed;
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+    throw error;
+  }
 }
 
 export async function generateTripWithGemini(
@@ -116,13 +129,20 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
+  const timeoutSignal: { timerId?: NodeJS.Timeout } = {};
+
   try {
-    return await Promise.race([
+    const result = await Promise.race([
       geminiCall(prompt, preferences, options),
-      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS, timeoutSignal),
     ]);
+    return result;
   } catch (error) {
     throw normalizeGeminiError(error);
+  } finally {
+    if (timeoutSignal.timerId) {
+      clearTimeout(timeoutSignal.timerId);
+    }
   }
 }
 
