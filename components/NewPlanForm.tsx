@@ -115,6 +115,7 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
 
     setIsLoadingEmptyPlan(true);
     try {
+      console.log("[1] Starting generation flow... Generating empty plan...");
       const planId = await generateEmptyPlanAction(values, userId);
       if (!planId) {
         toast({
@@ -125,10 +126,12 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[2] API responded successfully! Empty plan generated.");
       closeModal(false);
+      console.log("[3] UI state updated.");
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
@@ -146,6 +149,7 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
 
     setIsLoadingAIPlan(true);
     try {
+      console.log("[1] Starting generation flow... Generating AI plan...");
       const result = await generatePlanAction(values, userId);
       if (!result.ok) {
         toast({
@@ -156,10 +160,12 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[2] API responded successfully! AI plan generated.");
       closeModal(false);
+      console.log("[3] UI state updated.");
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
-    } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+    } catch (error: any) {
+      console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",

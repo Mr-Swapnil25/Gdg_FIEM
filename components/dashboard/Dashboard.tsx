@@ -20,7 +20,30 @@ export default function Dashboard() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    let timerId: ReturnType<typeof setTimeout>;
+
+    console.log("[1] Starting generation flow... Fetching user trips...");
+    Promise.race([
+      fetchUserTrips(user.uid),
+      new Promise<PlanDoc[]>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+      }),
+    ])
+      .then((data) => {
+        console.log("[2] API responded successfully! User trips fetched.");
+        setPlans(data);
+        console.log("[3] UI state updated.");
+      })
+      .catch((error: any) => {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        setPlans([]);
+      })
+      .finally(() => {
+        clearTimeout(timerId);
+      });
+
+    return () => clearTimeout(timerId);
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
