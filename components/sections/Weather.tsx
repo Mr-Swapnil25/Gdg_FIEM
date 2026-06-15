@@ -155,13 +155,22 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
     };
 
     const loadWeather = async () => {
+      let timerId: ReturnType<typeof setTimeout> | undefined;
       try {
+        console.log("[1] Starting generation flow... Loading weather...");
         const resolvedPlace = await resolveLocation();
         const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
+        const fetchPromise = fetch(
           `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
         );
+
+        const timeoutPromise = new Promise<Response>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const weatherResponse = await Promise.race([fetchPromise, timeoutPromise]);
+
         const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
 
         if (!weatherResponse.ok) {
@@ -170,6 +179,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
 
         if (cancelled) return;
 
+        console.log("[2] API responded successfully! Weather data fetched.");
         setWeatherData({
           placeName: resolvedPlace.formatted_address ?? placeName,
           iconUrl: weatherData.weatherCondition?.iconBaseUri
@@ -196,13 +206,15 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
-      } catch (error) {
-        console.error(error);
+        console.log("[3] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
+        if (timerId) clearTimeout(timerId);
         if (!cancelled) {
           setPlanState((state) => ({...state, weather: true}));
         }
