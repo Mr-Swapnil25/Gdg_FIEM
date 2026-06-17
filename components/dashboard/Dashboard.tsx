@@ -13,14 +13,32 @@ export default function Dashboard() {
   const [searchPlanText, setSearchPlanText] = useState("");
   const {user, loading} = useAuthContext();
   const [plans, setPlans] = useState<PlanDoc[] | undefined>();
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       setPlans([]);
+      setIsLoadingPlans(false);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    setIsLoadingPlans(true);
+    console.log("[1] Starting generation flow... fetching user trips");
+
+    fetchUserTrips(user.uid)
+      .then((data) => {
+        console.log("[2] API responded successfully! User trips fetched.");
+        setPlans(data);
+        console.log("[3] UI state updated.");
+      })
+      .catch((error) => {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
+        setPlans([]);
+      })
+      .finally(() => {
+        setIsLoadingPlans(false);
+      });
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
@@ -75,8 +93,8 @@ export default function Dashboard() {
           className="mt-5 mx-auto bg-background dark:border-2 dark:border-border/50 rounded-sm flex-1"
           style={{ flex: "1 1 auto" }}
         >
-          {!finalPlans || finalPlans.length === 0 ? (
-            <NoPlans isLoading={!plans} />
+          {isLoadingPlans || (!finalPlans || finalPlans.length === 0) ? (
+            <NoPlans isLoading={isLoadingPlans} />
           ) : (
             <div
               className="grid grid-cols-1 
