@@ -155,13 +155,23 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
     };
 
     const loadWeather = async () => {
+      let timerId: NodeJS.Timeout | undefined;
+      console.log("[1] Starting weather generation flow...");
       try {
         const resolvedPlace = await resolveLocation();
         const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
+        console.log("[2] Coordinates resolved, fetching weather data...");
+        const fetchPromise = fetch(
           `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
         );
+
+        const timeoutPromise = new Promise<Response>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Request Timed Out")), 30000);
+        });
+
+        const weatherResponse = await Promise.race([fetchPromise, timeoutPromise]);
+        console.log("[3] Weather API responded successfully!");
         const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
 
         if (!weatherResponse.ok) {
@@ -196,16 +206,16 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
-      } catch (error) {
-        console.error(error);
+        console.log("[4] UI state updated.");
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
-        if (!cancelled) {
-          setPlanState((state) => ({...state, weather: true}));
-        }
+        if (timerId) clearTimeout(timerId);
+        setPlanState((state) => ({...state, weather: true}));
       }
     };
 
