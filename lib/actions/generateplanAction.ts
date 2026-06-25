@@ -62,6 +62,7 @@ export async function generatePlanAction(
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
   try {
+    console.log("[1] Starting generation flow...");
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
       "Assume the traveller is planning primarily for India unless the destination explicitly says otherwise.",
@@ -81,6 +82,8 @@ export async function generatePlanAction(
       }),
       timeout(GEMINI_TIMEOUT_MS),
     ]);
+
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,6 +175,7 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
       return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
@@ -182,7 +186,7 @@ export async function generatePlanAction(
       };
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
     return toErrorResult(error);
   }
 }
