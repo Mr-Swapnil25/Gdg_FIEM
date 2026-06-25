@@ -197,15 +197,13 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
       } catch (error) {
-        console.error(error);
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
-        if (!cancelled) {
-          setPlanState((state) => ({...state, weather: true}));
-        }
+        setPlanState((state) => ({...state, weather: true}));
       }
     };
 
