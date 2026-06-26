@@ -30,21 +30,23 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         });
 
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
-        if (cancelled) return;
-
-        setPlan(trip);
-        if (!trip) {
-          setError("Plan not found or access denied.");
+        if (!cancelled) {
+          setPlan(trip);
+          if (!trip) {
+            setError("Plan not found or access denied.");
+          }
         }
       } catch (err) {
-        if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
-        setPlan(null);
-        setError("Plan not found or access denied.");
+        console.error("CRITICAL FETCH ERROR:", (err as any)?.message, (err as any)?.stack);
+        if (!cancelled) {
+          setPlan(null);
+          setError("Plan not found or access denied.");
+        }
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
-        setIsFetching(false);
+        if (!cancelled) {
+          setIsFetching(false);
+        }
       }
     }
 
