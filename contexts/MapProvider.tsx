@@ -70,6 +70,10 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
     );
   }
 
+  if (googleMapsApi.loadError) {
+    return <div>Error loading maps: {(googleMapsApi.loadError as Error).message}</div>;
+  }
+
   if (!googleMapsApi.isLoaded || isLoading) {
     return <SkeletonForTopPlacesToVisit isMaps />;
   }

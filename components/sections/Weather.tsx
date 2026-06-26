@@ -168,7 +168,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           throw new Error("Google Weather API request failed.");
         }
 
-        if (cancelled) return;
+        if (!cancelled) {
 
         setWeatherData({
           placeName: resolvedPlace.formatted_address ?? placeName,
@@ -196,8 +196,9 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
+        }
       } catch (error) {
-        console.error(error);
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);

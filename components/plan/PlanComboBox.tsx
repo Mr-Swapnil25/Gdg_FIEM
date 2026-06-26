@@ -37,7 +37,18 @@ export default function PlanComboBox() {
       setPlans([]);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+    const fetchPlans = async () => {
+      try {
+        const fetchedPlans = await fetchUserTrips(user.uid);
+        setPlans(fetchedPlans);
+      } catch (error) {
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
+        setPlans([]);
+      } finally {
+        setPlans((prev) => prev || []);
+      }
+    };
+    fetchPlans();
   }, [loading, user]);
 
   if (!plans)

@@ -49,16 +49,6 @@ async function getClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(
-        new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`)
-      );
-    }, ms);
-  });
-}
-
 function normalizeGeminiError(error: unknown) {
   if (error instanceof GeminiGenerationError) return error;
   return new GeminiGenerationError(
@@ -90,6 +80,7 @@ async function geminiCall(
   try {
     parsed = JSON.parse(rawText);
   } catch (parseError) {
+    console.error("CRITICAL FETCH ERROR:", (parseError as any)?.message, (parseError as any)?.stack);
     console.error("Raw Gemini output:", rawText);
     throw new GeminiGenerationError(
       "PARSE_ERROR",
@@ -116,13 +107,23 @@ export async function generateTripWithGemini(
   preferences?: Record<string, unknown>,
   options?: GenerateOptions
 ): Promise<TripItinerary> {
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => {
+      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
+  });
+
   try {
     return await Promise.race([
       geminiCall(prompt, preferences, options),
-      timeout(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      timeoutPromise,
     ]);
   } catch (error) {
     throw normalizeGeminiError(error);
+  } finally {
+    if (timerId) clearTimeout(timerId);
   }
 }
 
