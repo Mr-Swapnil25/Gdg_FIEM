@@ -22,14 +22,6 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
-    }, ms);
-  });
-}
-
 function toErrorResult(error: unknown): Extract<GeneratePlanActionResult, {ok: false}> {
   if (error instanceof GeminiGenerationError) {
     return {
@@ -61,12 +53,22 @@ export async function generatePlanAction(
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
+  let timerId: NodeJS.Timeout | undefined;
+
   try {
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
       "Assume the traveller is planning primarily for India unless the destination explicitly says otherwise.",
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
+
+    console.log("[1] Starting generation flow...");
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => {
+        reject(new GeminiGenerationError("GEMINI_TIMEOUT", "Request Timed Out"));
+      }, GEMINI_TIMEOUT_MS);
+    });
 
     const generated = await Promise.race([
       generateTripWithGemini(prompt, {
@@ -79,8 +81,9 @@ export async function generatePlanAction(
         distanceUnit: "km",
         region: "IN",
       }),
-      timeout(GEMINI_TIMEOUT_MS),
+      timeoutPromise,
     ]);
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,6 +175,7 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
       return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
@@ -182,7 +186,11 @@ export async function generatePlanAction(
       };
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
     return toErrorResult(error);
+  } finally {
+    if (timerId) {
+      clearTimeout(timerId);
+    }
   }
 }
