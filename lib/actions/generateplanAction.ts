@@ -62,25 +62,40 @@ export async function generatePlanAction(
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
   try {
+    console.log("[1] Starting generation flow...");
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
       "Assume the traveller is planning primarily for India unless the destination explicitly says otherwise.",
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
-        placeName,
-        activityPreferences,
-        companion,
-        fromDate: datesOfTravel.from.toISOString(),
-        toDate: datesOfTravel.to.toISOString(),
-        currency: "INR",
-        distanceUnit: "km",
-        region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    let timerId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timerId = setTimeout(() => {
+        reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${GEMINI_TIMEOUT_MS}ms.`));
+      }, GEMINI_TIMEOUT_MS);
+    });
+
+    let generated;
+    try {
+      generated = await Promise.race([
+        generateTripWithGemini(prompt, {
+          placeName,
+          activityPreferences,
+          companion,
+          fromDate: datesOfTravel.from.toISOString(),
+          toDate: datesOfTravel.to.toISOString(),
+          currency: "INR",
+          distanceUnit: "km",
+          region: "IN",
+        }),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timerId!);
+    }
+
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,6 +187,7 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state updated.");
       return {ok: true, planId};
     } catch (saveError) {
       console.error("Failed to save generated plan:", saveError);
@@ -182,7 +198,7 @@ export async function generatePlanAction(
       };
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
     return toErrorResult(error);
   }
 }
