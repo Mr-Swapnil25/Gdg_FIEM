@@ -83,7 +83,9 @@ async function geminiCall(
   });
 
   const fullPrompt = buildPrompt(prompt, preferences);
+  console.log("[1] Starting generation flow with Gemini...");
   const result = await model.generateContent(fullPrompt);
+  console.log("[2] Gemini API responded successfully!");
   const rawText = result.response.text().trim();
 
   let parsed: unknown;
@@ -108,6 +110,7 @@ async function geminiCall(
     );
   }
 
+  console.log("[3] Gemini data parsed.");
   return parsed;
 }
 
