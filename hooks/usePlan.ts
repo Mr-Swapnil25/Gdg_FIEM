@@ -19,6 +19,7 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
     async function load() {
       if (authLoading) return;
 
+      console.log("[usePlan] [1] Starting fetching plan...");
       setIsFetching(true);
       setPlan(undefined);
       setError(undefined);
@@ -30,20 +31,21 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         });
 
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
+        console.log("[usePlan] [2] API responded successfully!");
         if (cancelled) return;
 
         setPlan(trip);
         if (!trip) {
           setError("Plan not found or access denied.");
         }
+        console.log("[usePlan] [3] UI state updated.");
       } catch (err) {
+        console.error("CRITICAL FETCH ERROR:", (err as any)?.message, (err as any)?.stack);
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
         setIsFetching(false);
       }
     }
