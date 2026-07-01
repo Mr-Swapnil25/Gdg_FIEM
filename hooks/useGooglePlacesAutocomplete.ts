@@ -57,7 +57,7 @@ export function useGooglePlacesAutocomplete({
           .map((suggestion) => suggestion.placePrediction)
           .filter((prediction): prediction is google.maps.places.PlacePrediction => Boolean(prediction));
 
-        console.log("[useGooglePlacesAutocomplete] [2] Places API responded", {
+        console.log("[useGooglePlacesAutocomplete] [2] API responded successfully!", {
           count: suggestions.length,
         });
 
@@ -70,8 +70,9 @@ export function useGooglePlacesAutocomplete({
             placeId: prediction.placeId,
           }))
         );
+        console.log("[useGooglePlacesAutocomplete] [3] UI state updated.");
       } catch (error) {
-        console.error("[useGooglePlacesAutocomplete] Fetch failed", error);
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
         if (!cancelled) {
           const fallback = getLocalPlaceSuggestions(trimmedInput);
           console.log("[useGooglePlacesAutocomplete] [3] Local fallback suggestions", {
@@ -81,7 +82,7 @@ export function useGooglePlacesAutocomplete({
         }
       } finally {
         console.log("[useGooglePlacesAutocomplete] [FINALLY] loading complete");
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     })();
 

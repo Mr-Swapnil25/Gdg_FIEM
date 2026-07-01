@@ -156,6 +156,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
 
     const loadWeather = async () => {
       try {
+        console.log("[Weather] [1] Starting weather fetch for", placeName);
         const resolvedPlace = await resolveLocation();
         const {lat, lng} = resolvedPlace.geometry.location;
 
@@ -168,6 +169,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           throw new Error("Google Weather API request failed.");
         }
 
+        console.log("[Weather] [2] API responded successfully!");
         if (cancelled) return;
 
         setWeatherData({
@@ -196,16 +198,15 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
           seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
         });
+        console.log("[Weather] [3] UI state updated.");
       } catch (error) {
-        console.error(error);
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
-        if (!cancelled) {
-          setPlanState((state) => ({...state, weather: true}));
-        }
+        setPlanState((state) => ({...state, weather: true}));
       }
     };
 

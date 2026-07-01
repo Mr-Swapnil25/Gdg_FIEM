@@ -113,9 +113,11 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       return;
     }
 
+    console.log("[NewPlanForm] [1] Starting empty plan generation...");
     setIsLoadingEmptyPlan(true);
     try {
       const planId = await generateEmptyPlanAction(values, userId);
+      console.log("[NewPlanForm] [2] Empty plan action responded.");
       if (!planId) {
         toast({
           title: "Error",
@@ -125,10 +127,11 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[NewPlanForm] [3] Navigating to plan view...");
       closeModal(false);
       router.push(`/plans/${planId}/plan?isNewPlan=true`);
     } catch (error) {
-      console.error("Failed to generate empty plan:", error);
+      console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
@@ -144,9 +147,11 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
       return;
     }
 
+    console.log("[NewPlanForm] [1] Starting AI plan generation...");
     setIsLoadingAIPlan(true);
     try {
       const result = await generatePlanAction(values, userId);
+      console.log("[NewPlanForm] [2] AI plan action responded.");
       if (!result.ok) {
         toast({
           title: "Failed to generate AI travel plan",
@@ -156,10 +161,11 @@ const NewPlanForm = ({closeModal}: {closeModal: Dispatch<SetStateAction<boolean>
         return;
       }
 
+      console.log("[NewPlanForm] [3] Navigating to plan view...");
       closeModal(false);
       router.push(`/plans/${result.planId}/plan?isNewPlan=true`);
     } catch (error) {
-      console.error("Failed to generate AI plan:", error);
+      console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
       toast({
         title: "Error",
         description: "An unexpected error occurred while generating your plan.",
