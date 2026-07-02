@@ -38,12 +38,11 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         }
       } catch (err) {
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
+        console.error("CRITICAL FETCH ERROR:", (err as any)?.message, (err as any)?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
         setIsFetching(false);
       }
     }
