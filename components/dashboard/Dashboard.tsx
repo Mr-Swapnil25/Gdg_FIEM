@@ -13,14 +13,31 @@ export default function Dashboard() {
   const [searchPlanText, setSearchPlanText] = useState("");
   const {user, loading} = useAuthContext();
   const [plans, setPlans] = useState<PlanDoc[] | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       setPlans([]);
+      setIsLoading(false);
       return;
     }
-    fetchUserTrips(user.uid).then(setPlans).catch(() => setPlans([]));
+
+    async function loadPlans() {
+      if (!user) return; // double check
+      setIsLoading(true);
+      try {
+        const fetchedPlans = await fetchUserTrips(user.uid);
+        setPlans(fetchedPlans);
+      } catch (error) {
+        console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
+        setPlans([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadPlans();
   }, [loading, user]);
 
   const [filteredPlans, setFilteredPlans] = useState<PlanDoc[] | undefined>();
@@ -76,7 +93,7 @@ export default function Dashboard() {
           style={{ flex: "1 1 auto" }}
         >
           {!finalPlans || finalPlans.length === 0 ? (
-            <NoPlans isLoading={!plans} />
+            <NoPlans isLoading={isLoading || !plans} />
           ) : (
             <div
               className="grid grid-cols-1 
