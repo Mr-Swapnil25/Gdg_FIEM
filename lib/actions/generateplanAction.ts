@@ -22,11 +22,14 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
+function timeout(ms: number, signal?: { timerId?: ReturnType<typeof setTimeout> }): Promise<never> {
   return new Promise((_, reject) => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
     }, ms);
+    if (signal) {
+      signal.timerId = timer;
+    }
   });
 }
 
@@ -60,6 +63,7 @@ export async function generatePlanAction(
 ): Promise<GeneratePlanActionResult> {
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
+  const signal: { timerId?: ReturnType<typeof setTimeout> } = {};
 
   try {
     const prompt = [
@@ -68,19 +72,28 @@ export async function generatePlanAction(
       "Use Indian regional context, INR currency, metric distances in kilometres, local transit options, realistic Indian food/activity costs, and India-friendly routing.",
     ].join(" ");
 
-    const generated = await Promise.race([
-      generateTripWithGemini(prompt, {
-        placeName,
-        activityPreferences,
-        companion,
-        fromDate: datesOfTravel.from.toISOString(),
-        toDate: datesOfTravel.to.toISOString(),
-        currency: "INR",
-        distanceUnit: "km",
-        region: "IN",
-      }),
-      timeout(GEMINI_TIMEOUT_MS),
-    ]);
+    console.log("[1] Starting generation flow...");
+    let generated;
+    try {
+      generated = await Promise.race([
+        generateTripWithGemini(prompt, {
+          placeName,
+          activityPreferences,
+          companion,
+          fromDate: datesOfTravel.from.toISOString(),
+          toDate: datesOfTravel.to.toISOString(),
+          currency: "INR",
+          distanceUnit: "km",
+          region: "IN",
+        }),
+        timeout(GEMINI_TIMEOUT_MS, signal),
+      ]);
+      console.log("[2] Gemini API responded successfully!");
+    } finally {
+      if (signal.timerId) {
+        clearTimeout(signal.timerId);
+      }
+    }
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -182,7 +195,7 @@ export async function generatePlanAction(
       };
     }
   } catch (error) {
-    console.error("Error generating plan:", error);
+    console.error("CRITICAL FETCH ERROR:", (error as any)?.message, (error as any)?.stack);
     return toErrorResult(error);
   }
 }
