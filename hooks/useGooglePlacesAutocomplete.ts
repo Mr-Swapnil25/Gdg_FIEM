@@ -81,7 +81,7 @@ export function useGooglePlacesAutocomplete({
         }
       } finally {
         console.log("[useGooglePlacesAutocomplete] [FINALLY] loading complete");
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     })();
 
