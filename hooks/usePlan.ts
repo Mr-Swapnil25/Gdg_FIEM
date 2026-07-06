@@ -43,7 +43,6 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
         setError("Plan not found or access denied.");
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
         setIsFetching(false);
       }
     }
