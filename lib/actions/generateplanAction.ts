@@ -22,11 +22,14 @@ export type GeneratePlanActionResult =
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-function timeout(ms: number): Promise<never> {
+function timeout(ms: number, signal?: { timerId?: NodeJS.Timeout }): Promise<never> {
   return new Promise((_, reject) => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       reject(new GeminiGenerationError("GEMINI_TIMEOUT", `Gemini request timed out after ${ms}ms.`));
     }, ms);
+    if (signal) {
+      signal.timerId = id;
+    }
   });
 }
 
@@ -61,7 +64,10 @@ export async function generatePlanAction(
   const {placeName, activityPreferences, datesOfTravel, companion} = formData;
   const noOfDays = differenceInDays(datesOfTravel.to, datesOfTravel.from) + 1;
 
+  const signal: { timerId?: NodeJS.Timeout } = {};
+
   try {
+    console.log("[1] Starting Gemini generation flow...");
     const prompt = [
       `Create a ${noOfDays}-day travel itinerary for ${placeName}.`,
       "Assume the traveller is planning primarily for India unless the destination explicitly says otherwise.",
@@ -79,8 +85,10 @@ export async function generatePlanAction(
         distanceUnit: "km",
         region: "IN",
       }),
-      timeout(GEMINI_TIMEOUT_MS),
+      timeout(GEMINI_TIMEOUT_MS, signal),
     ]);
+
+    console.log("[2] Gemini API responded successfully!");
 
     let mainImageUrl: string | null = null;
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -172,17 +180,21 @@ export async function generatePlanAction(
         },
       });
 
+      console.log("[3] UI state / Database updated.");
+
       return {ok: true, planId};
-    } catch (saveError) {
-      console.error("Failed to save generated plan:", saveError);
+    } catch (saveError: any) {
+      console.error("CRITICAL FETCH ERROR:", saveError?.message, saveError?.stack);
       return {
         ok: false,
         errorCode: "PLAN_SAVE_FAILED",
         errorMessage: "Failed to save the generated travel plan.",
       };
     }
-  } catch (error) {
-    console.error("Error generating plan:", error);
+  } catch (error: any) {
+    console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
     return toErrorResult(error);
+  } finally {
+    if (signal.timerId) clearTimeout(signal.timerId);
   }
 }

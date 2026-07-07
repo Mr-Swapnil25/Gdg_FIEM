@@ -155,57 +155,72 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
     };
 
     const loadWeather = async () => {
+      console.log("[1] Starting weather generation flow...");
+      let timerId: NodeJS.Timeout;
+
       try {
         const resolvedPlace = await resolveLocation();
         const {lat, lng} = resolvedPlace.geometry.location;
 
-        const weatherResponse = await fetch(
+        const weatherFetch = fetch(
           `https://weather.googleapis.com/v1/currentConditions:lookup?key=${weatherApiKey}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC`
         );
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => {
+            reject(new Error("Request Timed Out"));
+          }, 30_000);
+        });
+
+        const weatherResponse = await Promise.race([weatherFetch, timeoutPromise]);
+
         const weatherData = (await weatherResponse.json()) as GoogleWeatherResponse;
 
         if (!weatherResponse.ok) {
           throw new Error("Google Weather API request failed.");
         }
 
-        if (cancelled) return;
+        console.log("[2] Weather API responded successfully!");
 
-        setWeatherData({
-          placeName: resolvedPlace.formatted_address ?? placeName,
-          iconUrl: weatherData.weatherCondition?.iconBaseUri
-            ? `${weatherData.weatherCondition.iconBaseUri}.svg`
-            : undefined,
-          weatherDescription:
-            weatherData.weatherCondition?.description?.text ?? "Weather unavailable",
-          temperature: weatherData.temperature?.degrees ?? 0,
-          windSpeed: weatherData.wind?.speed?.value ?? 0,
-          windUnit: formatWindUnit(weatherData.wind?.speed?.unit),
-          windDirection: weatherData.wind?.direction?.degrees ?? 0,
-          humidity: weatherData.relativeHumidity ?? 0,
-          maxTemperature:
-            weatherData.currentConditionsHistory?.maxTemperature?.degrees ??
-            weatherData.temperature?.degrees ??
-            0,
-          minTemperature:
-            weatherData.currentConditionsHistory?.minTemperature?.degrees ??
-            weatherData.temperature?.degrees ??
-            0,
-          feelsLikeTemperature:
-            weatherData.feelsLikeTemperature?.degrees ?? weatherData.temperature?.degrees ?? 0,
-          visibility: weatherData.visibility?.distance ?? 0,
-          visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
-          seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
-        });
-      } catch (error) {
-        console.error(error);
+        if (!cancelled) {
+          setWeatherData({
+            placeName: resolvedPlace.formatted_address ?? placeName,
+            iconUrl: weatherData.weatherCondition?.iconBaseUri
+              ? `${weatherData.weatherCondition.iconBaseUri}.svg`
+              : undefined,
+            weatherDescription:
+              weatherData.weatherCondition?.description?.text ?? "Weather unavailable",
+            temperature: weatherData.temperature?.degrees ?? 0,
+            windSpeed: weatherData.wind?.speed?.value ?? 0,
+            windUnit: formatWindUnit(weatherData.wind?.speed?.unit),
+            windDirection: weatherData.wind?.direction?.degrees ?? 0,
+            humidity: weatherData.relativeHumidity ?? 0,
+            maxTemperature:
+              weatherData.currentConditionsHistory?.maxTemperature?.degrees ??
+              weatherData.temperature?.degrees ??
+              0,
+            minTemperature:
+              weatherData.currentConditionsHistory?.minTemperature?.degrees ??
+              weatherData.temperature?.degrees ??
+              0,
+            feelsLikeTemperature:
+              weatherData.feelsLikeTemperature?.degrees ?? weatherData.temperature?.degrees ?? 0,
+            visibility: weatherData.visibility?.distance ?? 0,
+            visibilityUnit: formatDistanceUnit(weatherData.visibility?.unit),
+            seaLevel: weatherData.airPressure?.meanSeaLevelMillibars,
+          });
+          console.log("[3] UI state updated for weather.");
+        }
+      } catch (error: any) {
+        console.error("CRITICAL FETCH ERROR:", error?.message, error?.stack);
         if (!cancelled) {
           setWeatherData(null);
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
-        if (!cancelled) {
-          setPlanState((state) => ({...state, weather: true}));
-        }
+        if (timerId!) clearTimeout(timerId);
+        // CRITICAL: Ensure plan state updates so it's not endlessly loading
+        setPlanState((state) => ({...state, weather: true}));
       }
     };
 
