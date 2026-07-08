@@ -29,21 +29,23 @@ const usePlan = (planId: string, isNewPlan: boolean, isPublic: boolean) => {
           timer = setTimeout(() => reject(new Error("fetchTripById timed out")), PLAN_FETCH_TIMEOUT_MS);
         });
 
+        console.log("[1] Starting generation flow...");
         const trip = (await Promise.race([fetchPromise, timeoutPromise])) as PlanDoc | null;
+        console.log("[2] API responded successfully!");
         if (cancelled) return;
 
         setPlan(trip);
+        console.log("[3] UI state updated.");
         if (!trip) {
           setError("Plan not found or access denied.");
         }
       } catch (err) {
         if (cancelled) return;
-        console.error("[usePlan] Fetch error:", err);
+        console.error("CRITICAL FETCH ERROR:", (err as any)?.message, (err as any)?.stack);
         setPlan(null);
         setError("Plan not found or access denied.");
       } finally {
         if (timer) clearTimeout(timer);
-        if (cancelled) return;
         setIsFetching(false);
       }
     }
