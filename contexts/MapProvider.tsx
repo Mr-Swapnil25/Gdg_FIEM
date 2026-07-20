@@ -75,7 +75,7 @@ export function MapProvider({children, isLoading}: {children: ReactNode; isLoadi
   }
 
   if (!googleMapsApi.isLoaded || isLoading) {
-    return <div>Loading Maps...</div>;
+    return <SkeletonForTopPlacesToVisit isMaps />;
   }
 
   return children;
