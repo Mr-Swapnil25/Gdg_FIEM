@@ -156,8 +156,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
 
     const loadWeather = async () => {
       console.log("[1] Starting weather generation flow...");
-      let timerId: NodeJS.Timeout;
-
+      let timerId: ReturnType<typeof setTimeout> | undefined;
       try {
         const resolvedPlace = await resolveLocation();
         const {lat, lng} = resolvedPlace.geometry.location;
