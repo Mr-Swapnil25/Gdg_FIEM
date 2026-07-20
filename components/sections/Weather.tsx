@@ -218,7 +218,7 @@ const Weather = ({placeName}: {placeName: string | undefined}) => {
           setErrorMessage(`Error loading weather information for ${placeName}`);
         }
       } finally {
-        if (timerId!) clearTimeout(timerId);
+        if (timerId) clearTimeout(timerId);
         // CRITICAL: Ensure plan state updates so it's not endlessly loading
         setPlanState((state) => ({...state, weather: true}));
       }
